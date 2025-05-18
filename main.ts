@@ -1,13 +1,26 @@
 import { Notice, Plugin, Editor, MarkdownView } from 'obsidian';
+import { TagGeneratorSettingTab } from './settings';
 import OpenAI from "openai";
 
-const token = process.env["GITHUB_TOKEN"];
+// const token = process.env["GITHUB_TOKEN"];
 const endpoint = "https://models.github.ai/inference";
 const model = "openai/gpt-4.1-mini";
 
-export default class MyPlugin extends Plugin {
+interface TagGeneratorPluginSettings {
+    token: string;
+}
+
+const DEFAULT_SETTINGS: Partial<TagGeneratorPluginSettings> = {
+    token: '',
+};
+
+export default class TagGeneratorPlugin extends Plugin {
+    settings: TagGeneratorPluginSettings;
 
     async onload() {
+        await this.loadSettings();
+        this.addSettingTab(new TagGeneratorSettingTab(this.app, this));
+
         this.addCommand({
             id: 'generate-tag',
             name: 'Generate Tag',
@@ -16,7 +29,7 @@ export default class MyPlugin extends Plugin {
                 // new Notice(`${view.file?.path}`);
                 new Notice('Generating tag...');
 
-                const client = new OpenAI({ baseURL: endpoint, apiKey: token, dangerouslyAllowBrowser: true });
+                const client = new OpenAI({ baseURL: endpoint, apiKey: this.settings.token, dangerouslyAllowBrowser: true });
 
                 const response = await client.chat.completions.create({
                     messages: [
@@ -32,5 +45,13 @@ export default class MyPlugin extends Plugin {
             }
         });
 
+    }
+
+    async loadSettings() {
+        this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+    }
+
+    async saveSettings() {
+        await this.saveData(this.settings);
     }
 }
