@@ -35,32 +35,38 @@ export default class TagGeneratorPlugin extends Plugin {
             editorCallback: async (editor: Editor, view: MarkdownView) => {
                 new Notice('Generating tag...');
 
-                const client = new OpenAI({
-                    baseURL: endpoint,
-                    apiKey: this.settings.token,
-                    dangerouslyAllowBrowser: true
-                });
+                try {
+                    const client = new OpenAI({
+                        baseURL: endpoint,
+                        apiKey: this.settings.token,
+                        dangerouslyAllowBrowser: true
+                    });
 
-                const response = await client.chat.completions.create({
-                    messages: [
-                        { role: "system", content: prompt },
-                        { role: "user", content: view.getViewData() }
-                    ] as Array<{ role: "system" | "user" | "assistant"; content: string }>,
-                    temperature: 1.0,
-                    top_p: 1.0,
-                    model: model,
-                    response_format: { type: "json_object" },
-                });
-                const jsonResponse = response.choices[0].message.content;
-                const json = JSON.parse(jsonResponse);
-                console.log(json.keywords);
+                    const response = await client.chat.completions.create({
+                        messages: [
+                            { role: "system", content: prompt },
+                            { role: "user", content: view.getViewData() }
+                        ] as Array<{ role: "system" | "user" | "assistant"; content: string }>,
+                        temperature: 1.0,
+                        top_p: 1.0,
+                        model: model,
+                        response_format: { type: "json_object" },
+                    });
 
-                const file = this.app.workspace.getActiveFile();
-                this.app.fileManager.processFrontMatter(file, (frontmatter) => {
-                    frontmatter.tags.push(...json.keywords);
-                });
+                    const jsonResponse = response.choices[0].message.content;
+                    const json = JSON.parse(jsonResponse);
 
-                new Notice(`Tag generated`);
+                    const file = this.app.workspace.getActiveFile();
+                    this.app.fileManager.processFrontMatter(file, (frontmatter) => {
+                        frontmatter["tags"] = (frontmatter["tags"] || []).concat(json.keywords);
+                    });
+
+                    new Notice(`Tag generated`);
+                } catch (error) {
+                    console.error(error);
+                    new Notice('Error generating tag');
+                    return;
+                }
             }
         });
 
