@@ -1,4 +1,4 @@
-import { Notice, Plugin, Editor, MarkdownView } from 'obsidian';
+import { Notice, Plugin, Editor, MarkdownView, getAllTags, MetadataCache } from 'obsidian';
 import { TagGeneratorSettingTab } from './settings';
 import OpenAI from "openai";
 
@@ -33,9 +33,7 @@ export default class TagGeneratorPlugin extends Plugin {
             name: 'Generate Tag',
             // hotkeys: [{ modifiers: ['Mod', 'Shift'], key: 't' }],
             editorCallback: async (editor: Editor, view: MarkdownView) => {
-                // new Notice(`${view.file?.path}`);
                 new Notice('Generating tag...');
-                console.log(view.getViewData());
 
                 const client = new OpenAI({
                     baseURL: endpoint,
@@ -57,7 +55,12 @@ export default class TagGeneratorPlugin extends Plugin {
                 const json = JSON.parse(jsonResponse);
                 console.log(json.keywords);
 
-                // new Notice(`Response: ${response.choices[0].message.content}`);
+                const file = this.app.workspace.getActiveFile();
+                this.app.fileManager.processFrontMatter(file, (frontmatter) => {
+                    frontmatter.tags.push(...json.keywords);
+                });
+
+                new Notice(`Tag generated`);
             }
         });
 
