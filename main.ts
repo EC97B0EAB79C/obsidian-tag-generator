@@ -2,7 +2,6 @@ import { Notice, Plugin, Editor, MarkdownView, getAllTags, MetadataCache } from 
 import { TagGeneratorSettingTab } from './settings';
 import OpenAI from "openai";
 
-// const token = process.env["GITHUB_TOKEN"];
 const endpoint = "https://models.github.ai/inference";
 const model = "openai/gpt-4.1-mini";
 const prompt = `This GPT helps users generate a set of relevant keywords or tags based on the content of any note or text they provide.
@@ -32,24 +31,17 @@ export default class TagGeneratorPlugin extends Plugin {
         this.addCommand({
             id: 'generate-tag-note',
             name: 'Generate tag for entire note',
-            // hotkeys: [{ modifiers: ['Mod', 'Shift'], key: 't' }],
+            hotkeys: [{ modifiers: ['Alt'], key: 'n' }],
             editorCallback: async (editor: Editor, view: MarkdownView) => {
                 new Notice('Generating tag...');
-
-                try {
-                    const tag = await this.generateTagFromText(editor.getValue());
-
-                    const file = this.app.workspace.getActiveFile();
-                    this.app.fileManager.processFrontMatter(file, (frontmatter) => {
-                        frontmatter["tags"] = (frontmatter["tags"] || []).concat(tag);
-                    });
-
-                    new Notice(`Tag generated`);
-                } catch (error) {
-                    console.error(error);
-                    new Notice('Error generating tag');
+                const tags = await this.generateTagFromText(editor.getValue());
+                if (!tags || tags.length === 0) {
+                    new Notice('Problem with the tag generation');
                     return;
                 }
+
+                this.addTagsToFrontmatter(tags);
+                new Notice(`Tag generated`);
             }
         });
 
@@ -57,6 +49,7 @@ export default class TagGeneratorPlugin extends Plugin {
         this.addCommand({
             id: 'generate-tag-selection',
             name: 'Generate tag for selected text',
+            hotkeys: [{ modifiers: ['Alt'], key: 's' }],
             editorCallback: async (editor: Editor, view: MarkdownView) => {
                 const selectedText = editor.getSelection();
                 if (!selectedText) {
@@ -65,18 +58,14 @@ export default class TagGeneratorPlugin extends Plugin {
                 }
 
                 new Notice('Generating tag...');
-
-                try {
-                    const tag = await this.generateTagFromText(selectedText);
-                    const tagString = tag.map(t => `#${t}`).join(' ');
-                    editor.replaceSelection(selectedText + "\n\n" + tagString);
-
-                    new Notice(`Tag generated`);
-                } catch (error) {
-                    console.error(error);
-                    new Notice('Error generating tag');
+                const tags = await this.generateTagFromText(selectedText);
+                if (!tags || tags.length === 0) {
+                    new Notice('Problem with the tag generation');
                     return;
                 }
+
+                this.addTagsToSelection(editor, tags);
+                new Notice(`Tag generated`);
             }
         });
     }
@@ -90,30 +79,53 @@ export default class TagGeneratorPlugin extends Plugin {
     }
 
     async generateTagFromText(text: string): Promise<string[]> {
-        console.log("Generating tag from text:", text);
+        try {
+            console.log("Generating tag from text:", text);
 
-        const client = new OpenAI({
-            baseURL: endpoint,
-            apiKey: this.settings.token,
-            dangerouslyAllowBrowser: true
+            const client = new OpenAI({
+                baseURL: endpoint,
+                apiKey: this.settings.token,
+                dangerouslyAllowBrowser: true
+            });
+            console.log("Client created:", client);
+
+            const response = await client.chat.completions.create({
+                messages: [
+                    { role: "system", content: prompt },
+                    { role: "user", content: text }
+                ],
+                temperature: 1.0,
+                top_p: 1.0,
+                model: model,
+                response_format: { type: "json_object" },
+            });
+            console.log("Response received:", response);
+
+            const jsonResponse = response.choices[0].message.content;
+            const json = JSON.parse(jsonResponse);
+
+            return json.keywords;
+        } catch (error) {
+            console.error("Error generating tag:", error);
+            return [];
+        }
+    }
+
+    async addTagsToFrontmatter(tags: string[]) {
+        const file = this.app.workspace.getActiveFile();
+        if (!file) {
+            new Notice('No active file');
+            return;
+        }
+
+        this.app.fileManager.processFrontMatter(file, (frontmatter) => {
+            frontmatter["tags"] = (frontmatter["tags"] || []).concat(tags);
         });
-        console.log("Client created:", client);
+    }
 
-        const response = await client.chat.completions.create({
-            messages: [
-                { role: "system", content: prompt },
-                { role: "user", content: text }
-            ] as Array<{ role: "system" | "user" | "assistant"; content: string }>,
-            temperature: 1.0,
-            top_p: 1.0,
-            model: model,
-            response_format: { type: "json_object" },
-        });
-        console.log("Response received:", response);
-
-        const jsonResponse = response.choices[0].message.content;
-        const json = JSON.parse(jsonResponse);
-
-        return json.keywords;
+    async addTagsToSelection(editor: Editor, tags: string[]) {
+        const selectedText = editor.getSelection();
+        const tagString = tags.map(t => `#${t}`).join(' ');
+        editor.replaceSelection(selectedText + "\n\n" + tagString);
     }
 }
