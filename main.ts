@@ -28,37 +28,20 @@ export default class TagGeneratorPlugin extends Plugin {
         await this.loadSettings();
         this.addSettingTab(new TagGeneratorSettingTab(this.app, this));
 
+        // Add a command to generate tags from the entire note
         this.addCommand({
-            id: 'generate-tag',
-            name: 'Generate Tag',
+            id: 'generate-tag-note',
+            name: 'Generate tag for entire note',
             // hotkeys: [{ modifiers: ['Mod', 'Shift'], key: 't' }],
             editorCallback: async (editor: Editor, view: MarkdownView) => {
                 new Notice('Generating tag...');
 
                 try {
-                    const client = new OpenAI({
-                        baseURL: endpoint,
-                        apiKey: this.settings.token,
-                        dangerouslyAllowBrowser: true
-                    });
-
-                    const response = await client.chat.completions.create({
-                        messages: [
-                            { role: "system", content: prompt },
-                            { role: "user", content: view.getViewData() }
-                        ] as Array<{ role: "system" | "user" | "assistant"; content: string }>,
-                        temperature: 1.0,
-                        top_p: 1.0,
-                        model: model,
-                        response_format: { type: "json_object" },
-                    });
-
-                    const jsonResponse = response.choices[0].message.content;
-                    const json = JSON.parse(jsonResponse);
+                    const tag = await this.generateTagFromText(editor.getValue());
 
                     const file = this.app.workspace.getActiveFile();
                     this.app.fileManager.processFrontMatter(file, (frontmatter) => {
-                        frontmatter["tags"] = (frontmatter["tags"] || []).concat(json.keywords);
+                        frontmatter["tags"] = (frontmatter["tags"] || []).concat(tag);
                     });
 
                     new Notice(`Tag generated`);
@@ -70,6 +53,32 @@ export default class TagGeneratorPlugin extends Plugin {
             }
         });
 
+        // Add a command to generate tags from the selected text
+        this.addCommand({
+            id: 'generate-tag-selection',
+            name: 'Generate tag for selected text',
+            editorCallback: async (editor: Editor, view: MarkdownView) => {
+                const selectedText = editor.getSelection();
+                if (!selectedText) {
+                    new Notice('No text selected');
+                    return;
+                }
+
+                new Notice('Generating tag...');
+
+                try {
+                    const tag = await this.generateTagFromText(selectedText);
+                    const tagString = tag.map(t => `#${t}`).join(' ');
+                    editor.replaceSelection(selectedText + "\n\n" + tagString);
+
+                    new Notice(`Tag generated`);
+                } catch (error) {
+                    console.error(error);
+                    new Notice('Error generating tag');
+                    return;
+                }
+            }
+        });
     }
 
     async loadSettings() {
@@ -78,5 +87,33 @@ export default class TagGeneratorPlugin extends Plugin {
 
     async saveSettings() {
         await this.saveData(this.settings);
+    }
+
+    async generateTagFromText(text: string): Promise<string[]> {
+        console.log("Generating tag from text:", text);
+
+        const client = new OpenAI({
+            baseURL: endpoint,
+            apiKey: this.settings.token,
+            dangerouslyAllowBrowser: true
+        });
+        console.log("Client created:", client);
+
+        const response = await client.chat.completions.create({
+            messages: [
+                { role: "system", content: prompt },
+                { role: "user", content: text }
+            ] as Array<{ role: "system" | "user" | "assistant"; content: string }>,
+            temperature: 1.0,
+            top_p: 1.0,
+            model: model,
+            response_format: { type: "json_object" },
+        });
+        console.log("Response received:", response);
+
+        const jsonResponse = response.choices[0].message.content;
+        const json = JSON.parse(jsonResponse);
+
+        return json.keywords;
     }
 }
