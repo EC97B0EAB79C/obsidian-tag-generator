@@ -15,6 +15,10 @@ export class TagGeneratorSettingTab extends PluginSettingTab {
         containerEl.empty();
 
         new Setting(containerEl)
+            .setHeading()
+            .setName('General Settings')
+
+        new Setting(containerEl)
             .setName('Github Token')
             .setDesc('Enter your Github token here')
             .addText((text) =>
@@ -23,6 +27,24 @@ export class TagGeneratorSettingTab extends PluginSettingTab {
                     .setValue(this.plugin.settings.token)
                     .onChange(async (value) => {
                         this.plugin.settings.token = value;
+                        await this.plugin.saveSettings();
+                    })
+            );
+
+
+        new Setting(containerEl)
+            .setHeading()
+            .setName('Selected Text Settings')
+
+        new Setting(containerEl)
+            .setName('Tag Location')
+            .setDesc('Select where to add the tag')
+            .addToggle((toggle) =>
+                toggle
+                    .setValue(this.plugin.settings.selTagLocationTop)
+                    .onChange(async (value) => {
+                        console.log('Setting selTagLocationTop to ' + value);
+                        this.plugin.settings.selTagLocationTop = value;
                         await this.plugin.saveSettings();
                     })
             );

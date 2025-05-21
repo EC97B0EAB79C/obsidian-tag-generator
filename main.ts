@@ -13,11 +13,20 @@ Every tag will be lowercase.
 Return the list in json format with key "keywords" for keyword list.`;
 
 interface TagGeneratorPluginSettings {
+    // General settings
     token: string;
+
+    // Setting for entire note
+
+    // Setting for selected text
+    selTagLocationTop: boolean;
+
 }
 
 const DEFAULT_SETTINGS: Partial<TagGeneratorPluginSettings> = {
     token: '',
+
+    selTagLocationTop: true,
 };
 
 export default class TagGeneratorPlugin extends Plugin {
@@ -47,7 +56,7 @@ export default class TagGeneratorPlugin extends Plugin {
 
         // Add a command to generate tags from the selected text
         this.addCommand({
-            id: 'generate-tag-selection',
+            id: 'generate-tag-selected',
             name: 'Generate tag for selected text',
             hotkeys: [{ modifiers: ['Alt'], key: 's' }],
             editorCallback: async (editor: Editor, view: MarkdownView) => {
@@ -126,6 +135,12 @@ export default class TagGeneratorPlugin extends Plugin {
     async addTagsToSelection(editor: Editor, tags: string[]) {
         const selectedText = editor.getSelection();
         const tagString = tags.map(t => `#${t}`).join(' ');
-        editor.replaceSelection(selectedText + "\n\n" + tagString);
+        let replaceText = "";
+        if (this.settings.selTagLocationTop) {
+            replaceText = tagString + "\n\n" + selectedText;
+        } else {
+            replaceText = selectedText + "\n\n" + tagString;
+        }
+        editor.replaceSelection(replaceText);
     }
 }
