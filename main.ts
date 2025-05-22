@@ -4,17 +4,21 @@ import OpenAI from "openai";
 
 const endpoint = "https://models.github.ai/inference";
 const model = "openai/gpt-4.1-mini";
-const prompt = `This GPT helps users generate a set of relevant keywords or tags based on the content of any note or text they provide.
+const prompt = (nOfTagsCategory: number, nOfTagsGeneral: number, nOfTagsSpecific: number) => `This GPT helps users generate a set of relevant keywords or tags based on the content of any note or text they provide.
 It offers concise, descriptive, and relevant tags that help organize and retrieve similar notes or resources later.
-The GPT will aim to provide up to 10 keywords, with 1 keyword acting as a category, 3 general tags applicable to a broad context, and 6 being more specific to the content of the note.
+The GPT will aim to provide up to ${nOfTagsCategory + nOfTagsGeneral + nOfTagsSpecific} keywords, with ${nOfTagsCategory} keyword acting as a category, ${nOfTagsGeneral} general tags applicable to a broad context, and ${nOfTagsSpecific} being more specific to the content of the note.
 It avoids suggesting overly generic or redundant keywords unless necessary.
 It will list the tags using underscores instead of spaces, ordered from the most general to the most specific.
 Every tag will be lowercase.
 Return the list in json format with key "keywords" for keyword list.`;
 
+
 interface TagGeneratorPluginSettings {
     // General settings
     token: string;
+    nOfTagsCategory: number;
+    nOfTagsGeneral: number;
+    nOfTagsSpecific: number;
 
     // Setting for entire note
 
@@ -24,8 +28,15 @@ interface TagGeneratorPluginSettings {
 }
 
 const DEFAULT_SETTINGS: Partial<TagGeneratorPluginSettings> = {
+    // General settings
     token: '',
+    nOfTagsCategory: 1,
+    nOfTagsGeneral: 3,
+    nOfTagsSpecific: 6,
 
+    // Setting for entire note
+
+    // Setting for selected text
     selTagLocationTop: true,
 };
 
@@ -100,7 +111,7 @@ export default class TagGeneratorPlugin extends Plugin {
 
             const response = await client.chat.completions.create({
                 messages: [
-                    { role: "system", content: prompt },
+                    { role: "system", content: prompt(this.settings.nOfTagsCategory, this.settings.nOfTagsGeneral, this.settings.nOfTagsSpecific) },
                     { role: "user", content: text }
                 ],
                 temperature: 1.0,
