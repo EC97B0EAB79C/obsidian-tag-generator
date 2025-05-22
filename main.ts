@@ -54,7 +54,7 @@ export default class TagGeneratorPlugin extends Plugin {
             hotkeys: [{ modifiers: ['Alt'], key: 'n' }],
             editorCallback: async (editor: Editor, view: MarkdownView) => {
                 new Notice('Generating tag...');
-                const tags = await this.generateTagFromText(editor.getValue());
+                const tags = await this.generateTagFromText(editor.getValue(), view.getDisplayText());
                 if (!tags || tags.length === 0) {
                     new Notice('Problem with the tag generation');
                     return;
@@ -78,7 +78,7 @@ export default class TagGeneratorPlugin extends Plugin {
                 }
 
                 new Notice('Generating tag...');
-                const tags = await this.generateTagFromText(selectedText);
+                const tags = await this.generateTagFromText(selectedText, view.getDisplayText());
                 if (!tags || tags.length === 0) {
                     new Notice('Problem with the tag generation');
                     return;
@@ -98,7 +98,7 @@ export default class TagGeneratorPlugin extends Plugin {
         await this.saveData(this.settings);
     }
 
-    async generateTagFromText(text: string): Promise<string[]> {
+    async generateTagFromText(text: string, displayText: string): Promise<string[]> {
         try {
             console.log("Generating tag from text:", text);
 
@@ -112,6 +112,7 @@ export default class TagGeneratorPlugin extends Plugin {
             const response = await client.chat.completions.create({
                 messages: [
                     { role: "system", content: prompt(this.settings.nOfTagsCategory, this.settings.nOfTagsGeneral, this.settings.nOfTagsSpecific) },
+                    { role: "user", content: `Generate tags for the following text from: note ${displayText}` },
                     { role: "user", content: text }
                 ],
                 temperature: 1.0,
