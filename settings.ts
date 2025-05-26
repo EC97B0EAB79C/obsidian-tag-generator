@@ -1,6 +1,15 @@
 import TagGeneratorPlugin from './main';
 import { App, PluginSettingTab, Setting } from 'obsidian';
 
+
+const getModelOptions = [
+    { name: 'OpenAI GPT-4.1-nano', value: 'openai/gpt-4.1-nano' },
+    { name: 'OpenAI GPT-4.1-mini', value: 'openai/gpt-4.1-mini' },
+    { name: 'OpenAI GPT-4.1', value: 'openai/gpt-4.1' },
+    { name: 'OpenAI GPT-4o', value: 'openai/gpt-4o' },
+    { name: 'OpenAI GPT-4o mini', value: 'openai/gpt-4o-mini' },
+];
+
 export class TagGeneratorSettingTab extends PluginSettingTab {
     plugin: TagGeneratorPlugin;
 
@@ -30,6 +39,22 @@ export class TagGeneratorSettingTab extends PluginSettingTab {
                         await this.plugin.saveSettings();
                     })
             );
+
+
+        new Setting(containerEl)
+            .setName('Model')
+            .setDesc('Select the model to use for tag generation')
+            .addDropdown((dropdown) => {
+                getModelOptions.forEach(opt =>
+                    dropdown.addOption(opt.value, opt.name)
+                );
+                dropdown
+                    .setValue(this.plugin.settings.model)
+                    .onChange(async (value) => {
+                        this.plugin.settings.model = value;
+                        await this.plugin.saveSettings();
+                    });
+            });
 
         new Setting(containerEl)
             .setName('Number of Category Tags')

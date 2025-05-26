@@ -3,7 +3,6 @@ import { TagGeneratorSettingTab } from './settings';
 import OpenAI from "openai";
 
 const endpoint = "https://models.github.ai/inference";
-const model = "openai/gpt-4.1-mini";
 const prompt = (nOfTagsCategory: number, nOfTagsGeneral: number, nOfTagsSpecific: number) => `This GPT helps users generate a set of relevant keywords or tags based on the content of any note or text they provide.
 It offers concise, descriptive, and relevant tags that help organize and retrieve similar notes or resources later.
 The GPT will aim to provide up to ${nOfTagsCategory + nOfTagsGeneral + nOfTagsSpecific} keywords, with ${nOfTagsCategory} keyword acting as a category, ${nOfTagsGeneral} general tags applicable to a broad context, and ${nOfTagsSpecific} being more specific to the content of the note.
@@ -16,6 +15,7 @@ Return the list in json format with key "keywords" for keyword list.`;
 interface TagGeneratorPluginSettings {
     // General settings
     token: string;
+    model: string;
     nOfTagsCategory: number;
     nOfTagsGeneral: number;
     nOfTagsSpecific: number;
@@ -30,6 +30,7 @@ interface TagGeneratorPluginSettings {
 const DEFAULT_SETTINGS: Partial<TagGeneratorPluginSettings> = {
     // General settings
     token: '',
+    model: "openai/gpt-4.1-mini",
     nOfTagsCategory: 1,
     nOfTagsGeneral: 3,
     nOfTagsSpecific: 6,
@@ -130,7 +131,7 @@ export default class TagGeneratorPlugin extends Plugin {
                 ],
                 temperature: 1.0,
                 top_p: 1.0,
-                model: model,
+                model: this.settings.model,
                 response_format: { type: "json_object" },
             });
             console.log("Response received:", response);
