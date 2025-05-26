@@ -54,7 +54,10 @@ export default class TagGeneratorPlugin extends Plugin {
             hotkeys: [{ modifiers: ['Alt'], key: 'n' }],
             editorCallback: async (editor: Editor, view: MarkdownView) => {
                 new Notice('Generating tag...');
-                const tags = await this.generateTagFromText(editor.getValue(), view.getDisplayText());
+                const tags = await this.generateTagFromText(
+                    editor.getValue(),
+                    view.getDisplayText()
+                );
                 if (!tags || tags.length === 0) {
                     new Notice('Problem with the tag generation');
                     return;
@@ -78,7 +81,11 @@ export default class TagGeneratorPlugin extends Plugin {
                 }
 
                 new Notice('Generating tag...');
-                const tags = await this.generateTagFromText(selectedText, view.getDisplayText());
+                const tags = await this.generateTagFromText(
+                    selectedText,
+                    view.getDisplayText(),
+                    await this.getCurrentHeadingText(view)
+                );
                 if (!tags || tags.length === 0) {
                     new Notice('Problem with the tag generation');
                     return;
@@ -98,7 +105,7 @@ export default class TagGeneratorPlugin extends Plugin {
         await this.saveData(this.settings);
     }
 
-    async generateTagFromText(text: string, displayText: string): Promise<string[]> {
+    async generateTagFromText(text: string, displayText: string, headingText?: string): Promise<string[]> {
         try {
             console.log("Generating tag from text:", text);
 
@@ -109,10 +116,16 @@ export default class TagGeneratorPlugin extends Plugin {
             });
             console.log("Client created:", client);
 
+            const systemPrompt = prompt(this.settings.nOfTagsCategory, this.settings.nOfTagsGeneral, this.settings.nOfTagsSpecific);
+            console.log("System prompt:", systemPrompt);
+
+            const userPrompt = `Generate tags for the following text from: note "${displayText}"${headingText ? ` > section "${headingText}"` : ''}`;
+            console.log("User prompt:", userPrompt);
+
             const response = await client.chat.completions.create({
                 messages: [
-                    { role: "system", content: prompt(this.settings.nOfTagsCategory, this.settings.nOfTagsGeneral, this.settings.nOfTagsSpecific) },
-                    { role: "user", content: `Generate tags for the following text from: note ${displayText}` },
+                    { role: "system", content: systemPrompt },
+                    { role: "user", content: userPrompt },
                     { role: "user", content: text }
                 ],
                 temperature: 1.0,
@@ -154,5 +167,21 @@ export default class TagGeneratorPlugin extends Plugin {
             replaceText = selectedText + "\n\n" + tagString;
         }
         editor.replaceSelection(replaceText);
+    }
+
+    async getCurrentHeadingText(view: MarkdownView): Promise<string> {
+        const cursorLine = view.editor.getCursor("from").line - 1;
+        const cache = this.app.metadataCache.getFileCache(this.app.workspace.getActiveFile());
+
+        let currentHeading = '';
+        for (const h of cache.headings) {
+            if (h.position.start.line <= cursorLine) {
+                currentHeading = h.heading;
+            } else {
+                break;
+            }
+        }
+
+        return currentHeading;
     }
 }
