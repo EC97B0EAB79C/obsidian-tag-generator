@@ -16,9 +16,8 @@ interface TagGeneratorPluginSettings {
     // General settings
     token: string;
     model: string;
-    nOfTagsCategory: number;
-    nOfTagsGeneral: number;
-    nOfTagsSpecific: number;
+    nOfTags: number;
+    ratioOfGeneralSpecific: number;
 
     // Setting for entire note
 
@@ -31,9 +30,8 @@ const DEFAULT_SETTINGS: Partial<TagGeneratorPluginSettings> = {
     // General settings
     token: '',
     model: "openai/gpt-4.1-mini",
-    nOfTagsCategory: 1,
-    nOfTagsGeneral: 3,
-    nOfTagsSpecific: 6,
+    nOfTags: 10,
+    ratioOfGeneralSpecific: 0.4,
 
     // Setting for entire note
 
@@ -117,7 +115,9 @@ export default class TagGeneratorPlugin extends Plugin {
             });
             console.log("Client created:", client);
 
-            const systemPrompt = prompt(this.settings.nOfTagsCategory, this.settings.nOfTagsGeneral, this.settings.nOfTagsSpecific);
+            const nOfTagsGeneral = Math.ceil((this.settings.nOfTags - 1) * this.settings.ratioOfGeneralSpecific);
+            const nOfTagsSpecific = (this.settings.nOfTags - 1) - nOfTagsGeneral;
+            const systemPrompt = prompt(1, nOfTagsGeneral, nOfTagsSpecific);
             console.log("System prompt:", systemPrompt);
 
             const userPrompt = `Generate tags for the following text from: note "${displayText}"${headingText ? ` > section "${headingText}"` : ''}`;
