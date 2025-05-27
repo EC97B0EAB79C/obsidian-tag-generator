@@ -23,14 +23,14 @@ export class TagGeneratorSettingTab extends PluginSettingTab {
 
         containerEl.empty();
 
-        // General Settings
+        // LLM Settings
         new Setting(containerEl)
             .setHeading()
-            .setName('General Settings')
+            .setName('LLM Settings')
 
         new Setting(containerEl)
-            .setName('Github Token')
-            .setDesc('Enter your Github token here')
+            .setName('API Token')
+            .setDesc('Enter your API Token here')
             .addText((text) =>
                 text
                     .setPlaceholder('ghp_XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX')
@@ -40,7 +40,6 @@ export class TagGeneratorSettingTab extends PluginSettingTab {
                         await this.plugin.saveSettings();
                     })
             );
-
 
         new Setting(containerEl)
             .setName('Model')
@@ -56,6 +55,24 @@ export class TagGeneratorSettingTab extends PluginSettingTab {
                         await this.plugin.saveSettings();
                     });
             });
+
+        new Setting(containerEl)
+            .setName('API Endpoint')
+            .setDesc('Enter your API Endpoint here (optional)')
+            .addText((text) =>
+                text
+                    .setPlaceholder('https://api.openai.com/v1')
+                    .setValue(this.plugin.settings.endpoint)
+                    .onChange(async (value) => {
+                        this.plugin.settings.endpoint = value;
+                        await this.plugin.saveSettings();
+                    })
+            );
+
+        // Tag Generation Settings
+        new Setting(containerEl)
+            .setHeading()
+            .setName('Tag Generation Settings')
 
         new Setting(containerEl)
             .setName('Number of Tags')

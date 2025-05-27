@@ -2,7 +2,6 @@ import { Notice, Plugin, Editor, MarkdownView, getAllTags, MetadataCache } from 
 import { TagGeneratorSettingTab } from './settings';
 import { LLMGeneration } from './llm';
 
-const endpoint = "https://models.github.ai/inference";
 const prompt = (nOfTagsCategory: number, nOfTagsGeneral: number, nOfTagsSpecific: number) => `This GPT helps users generate a set of relevant keywords or tags based on the content of any note or text they provide.
 It offers concise, descriptive, and relevant tags that help organize and retrieve similar notes or resources later.
 The GPT will aim to provide up to ${nOfTagsCategory + nOfTagsGeneral + nOfTagsSpecific} keywords, with ${nOfTagsCategory} keyword acting as a category, ${nOfTagsGeneral} general tags applicable to a broad context, and ${nOfTagsSpecific} being more specific to the content of the note.
@@ -16,6 +15,9 @@ interface TagGeneratorPluginSettings {
     // General settings
     token: string;
     model: string;
+    endpoint: string;
+
+    // Tag generation settings
     nOfTags: number;
     ratioOfGeneralSpecific: number;
 
@@ -30,6 +32,9 @@ const DEFAULT_SETTINGS: Partial<TagGeneratorPluginSettings> = {
     // General settings
     token: '',
     model: "openai/gpt-4.1-mini",
+    endpoint: '',
+
+    // Tag generation settings
     nOfTags: 10,
     ratioOfGeneralSpecific: 0.4,
 
@@ -124,7 +129,7 @@ export default class TagGeneratorPlugin extends Plugin {
             this.settings.model,
             this.settings.token,
             messages,
-            endpoint
+            this.settings.endpoint
         );
 
         return tags;
