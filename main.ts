@@ -1,6 +1,6 @@
 import { Notice, Plugin, Editor, MarkdownView, getAllTags, MetadataCache } from 'obsidian';
 import { TagGeneratorSettingTab } from './settings';
-import OpenAI from "openai";
+import { LLMGeneration } from './llm';
 
 const endpoint = "https://models.github.ai/inference";
 const prompt = (nOfTagsCategory: number, nOfTagsGeneral: number, nOfTagsSpecific: number) => `This GPT helps users generate a set of relevant keywords or tags based on the content of any note or text they provide.
@@ -105,45 +105,29 @@ export default class TagGeneratorPlugin extends Plugin {
     }
 
     async generateTagFromText(text: string, displayText: string, headingText?: string): Promise<string[]> {
-        try {
-            console.log("Generating tag from text:", text);
+        const nOfTagsGeneral = Math.ceil((this.settings.nOfTags - 1) * this.settings.ratioOfGeneralSpecific);
+        const nOfTagsSpecific = (this.settings.nOfTags - 1) - nOfTagsGeneral;
+        const systemPrompt = prompt(1, nOfTagsGeneral, nOfTagsSpecific);
+        console.log("System prompt:", systemPrompt);
 
-            const client = new OpenAI({
-                baseURL: endpoint,
-                apiKey: this.settings.token,
-                dangerouslyAllowBrowser: true
-            });
-            console.log("Client created:", client);
+        const userPrompt = `Generate tags for the following text from: note "${displayText}"${headingText ? ` > section "${headingText}"` : ''}`;
+        console.log("User prompt:", userPrompt);
 
-            const nOfTagsGeneral = Math.ceil((this.settings.nOfTags - 1) * this.settings.ratioOfGeneralSpecific);
-            const nOfTagsSpecific = (this.settings.nOfTags - 1) - nOfTagsGeneral;
-            const systemPrompt = prompt(1, nOfTagsGeneral, nOfTagsSpecific);
-            console.log("System prompt:", systemPrompt);
+        const messages = [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userPrompt },
+            { role: "user", content: text }
+        ]
 
-            const userPrompt = `Generate tags for the following text from: note "${displayText}"${headingText ? ` > section "${headingText}"` : ''}`;
-            console.log("User prompt:", userPrompt);
+        const llm = new LLMGeneration();
+        const tags = await llm.completionOpenAI(
+            this.settings.model,
+            this.settings.token,
+            messages,
+            endpoint
+        );
 
-            const response = await client.chat.completions.create({
-                messages: [
-                    { role: "system", content: systemPrompt },
-                    { role: "user", content: userPrompt },
-                    { role: "user", content: text }
-                ],
-                temperature: 1.0,
-                top_p: 1.0,
-                model: this.settings.model,
-                response_format: { type: "json_object" },
-            });
-            console.log("Response received:", response);
-
-            const jsonResponse = response.choices[0].message.content;
-            const json = JSON.parse(jsonResponse);
-
-            return json.keywords;
-        } catch (error) {
-            console.error("Error generating tag:", error);
-            return [];
-        }
+        return tags;
     }
 
     async addTagsToFrontmatter(tags: string[]) {
