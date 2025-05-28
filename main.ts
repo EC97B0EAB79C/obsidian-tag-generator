@@ -1,8 +1,7 @@
 import { Notice, Plugin, Editor, MarkdownView, getAllTags, MetadataCache } from 'obsidian';
 import { TagGeneratorSettingTab } from './settings';
-import OpenAI from "openai";
+import { LLMGeneration } from './llm';
 
-const endpoint = "https://models.github.ai/inference";
 const prompt = (nOfTagsCategory: number, nOfTagsGeneral: number, nOfTagsSpecific: number) => `This GPT helps users generate a set of relevant keywords or tags based on the content of any note or text they provide.
 It offers concise, descriptive, and relevant tags that help organize and retrieve similar notes or resources later.
 The GPT will aim to provide up to ${nOfTagsCategory + nOfTagsGeneral + nOfTagsSpecific} keywords, with ${nOfTagsCategory} keyword acting as a category, ${nOfTagsGeneral} general tags applicable to a broad context, and ${nOfTagsSpecific} being more specific to the content of the note.
@@ -16,9 +15,11 @@ interface TagGeneratorPluginSettings {
     // General settings
     token: string;
     model: string;
-    nOfTagsCategory: number;
-    nOfTagsGeneral: number;
-    nOfTagsSpecific: number;
+    endpoint: string;
+
+    // Tag generation settings
+    nOfTags: number;
+    ratioOfGeneralSpecific: number;
 
     // Setting for entire note
 
@@ -31,9 +32,11 @@ const DEFAULT_SETTINGS: Partial<TagGeneratorPluginSettings> = {
     // General settings
     token: '',
     model: "openai/gpt-4.1-mini",
-    nOfTagsCategory: 1,
-    nOfTagsGeneral: 3,
-    nOfTagsSpecific: 6,
+    endpoint: '',
+
+    // Tag generation settings
+    nOfTags: 10,
+    ratioOfGeneralSpecific: 0.4,
 
     // Setting for entire note
 
@@ -107,43 +110,29 @@ export default class TagGeneratorPlugin extends Plugin {
     }
 
     async generateTagFromText(text: string, displayText: string, headingText?: string): Promise<string[]> {
-        try {
-            console.log("Generating tag from text:", text);
+        const nOfTagsGeneral = Math.ceil((this.settings.nOfTags - 1) * this.settings.ratioOfGeneralSpecific);
+        const nOfTagsSpecific = (this.settings.nOfTags - 1) - nOfTagsGeneral;
+        const systemPrompt = prompt(1, nOfTagsGeneral, nOfTagsSpecific);
+        console.log("System prompt:", systemPrompt);
 
-            const client = new OpenAI({
-                baseURL: endpoint,
-                apiKey: this.settings.token,
-                dangerouslyAllowBrowser: true
-            });
-            console.log("Client created:", client);
+        const userPrompt = `Generate tags for the following text from: note "${displayText}"${headingText ? ` > section "${headingText}"` : ''}`;
+        console.log("User prompt:", userPrompt);
 
-            const systemPrompt = prompt(this.settings.nOfTagsCategory, this.settings.nOfTagsGeneral, this.settings.nOfTagsSpecific);
-            console.log("System prompt:", systemPrompt);
+        const messages = [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userPrompt },
+            { role: "user", content: text }
+        ]
 
-            const userPrompt = `Generate tags for the following text from: note "${displayText}"${headingText ? ` > section "${headingText}"` : ''}`;
-            console.log("User prompt:", userPrompt);
+        const llm = new LLMGeneration();
+        const tags = await llm.completion(
+            this.settings.model,
+            this.settings.token,
+            messages,
+            this.settings.endpoint
+        );
 
-            const response = await client.chat.completions.create({
-                messages: [
-                    { role: "system", content: systemPrompt },
-                    { role: "user", content: userPrompt },
-                    { role: "user", content: text }
-                ],
-                temperature: 1.0,
-                top_p: 1.0,
-                model: this.settings.model,
-                response_format: { type: "json_object" },
-            });
-            console.log("Response received:", response);
-
-            const jsonResponse = response.choices[0].message.content;
-            const json = JSON.parse(jsonResponse);
-
-            return json.keywords;
-        } catch (error) {
-            console.error("Error generating tag:", error);
-            return [];
-        }
+        return tags;
     }
 
     async addTagsToFrontmatter(tags: string[]) {

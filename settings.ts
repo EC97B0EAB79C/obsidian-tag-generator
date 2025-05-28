@@ -23,13 +23,14 @@ export class TagGeneratorSettingTab extends PluginSettingTab {
 
         containerEl.empty();
 
+        // LLM Settings
         new Setting(containerEl)
             .setHeading()
-            .setName('General Settings')
+            .setName('LLM Settings')
 
         new Setting(containerEl)
-            .setName('Github Token')
-            .setDesc('Enter your Github token here')
+            .setName('API Token')
+            .setDesc('Enter your API Token here')
             .addText((text) =>
                 text
                     .setPlaceholder('ghp_XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX')
@@ -39,7 +40,6 @@ export class TagGeneratorSettingTab extends PluginSettingTab {
                         await this.plugin.saveSettings();
                     })
             );
-
 
         new Setting(containerEl)
             .setName('Model')
@@ -57,54 +57,56 @@ export class TagGeneratorSettingTab extends PluginSettingTab {
             });
 
         new Setting(containerEl)
-            .setName('Number of Category Tags')
-            .setDesc('Number of tags to generate for the category')
+            .setName('API Endpoint')
+            .setDesc('Enter your API Endpoint here (optional)')
             .addText((text) =>
                 text
-                    .setPlaceholder('1')
-                    .setValue(this.plugin.settings.nOfTagsCategory.toString())
+                    .setPlaceholder('https://api.openai.com/v1')
+                    .setValue(this.plugin.settings.endpoint)
+                    .onChange(async (value) => {
+                        this.plugin.settings.endpoint = value;
+                        await this.plugin.saveSettings();
+                    })
+            );
+
+        // Tag Generation Settings
+        new Setting(containerEl)
+            .setHeading()
+            .setName('Tag Generation Settings')
+
+        new Setting(containerEl)
+            .setName('Number of Tags')
+            .setDesc('Number of tags to generate')
+            .addText((text) =>
+                text
+                    .setPlaceholder('10')
+                    .setValue(this.plugin.settings.nOfTags.toString())
                     .onChange(async (value) => {
                         const num = parseInt(value);
                         if (!isNaN(num)) {
-                            this.plugin.settings.nOfTagsCategory = num;
+                            this.plugin.settings.nOfTags = num;
                             await this.plugin.saveSettings();
                         }
                     })
             );
 
         new Setting(containerEl)
-            .setName('Number of General Tags')
-            .setDesc('Number of tags to generate for the general category')
+            .setName('Ratio of General to Specific Tags')
+            .setDesc('(0.4 means 40% general tags and 60% specific tags)')
             .addText((text) =>
                 text
-                    .setPlaceholder('3')
-                    .setValue(this.plugin.settings.nOfTagsGeneral.toString())
+                    .setPlaceholder('0.4')
+                    .setValue(this.plugin.settings.ratioOfGeneralSpecific.toString())
                     .onChange(async (value) => {
                         const num = parseInt(value);
-                        if (!isNaN(num)) {
-                            this.plugin.settings.nOfTagsGeneral = num;
+                        if (!isNaN(num) && num >= 0 && num <= 1) {
+                            this.plugin.settings.ratioOfGeneralSpecific = num;
                             await this.plugin.saveSettings();
                         }
                     })
             );
 
-        new Setting(containerEl)
-            .setName('Number of Specific Tags')
-            .setDesc('Number of tags to generate for the specific category')
-            .addText((text) =>
-                text
-                    .setPlaceholder('6')
-                    .setValue(this.plugin.settings.nOfTagsSpecific.toString())
-                    .onChange(async (value) => {
-                        const num = parseInt(value);
-                        if (!isNaN(num)) {
-                            this.plugin.settings.nOfTagsSpecific = num;
-                            await this.plugin.saveSettings();
-                        }
-                    })
-            );
-
-
+        // Setting for Selected Text Generation
         new Setting(containerEl)
             .setHeading()
             .setName('Selected Text Settings')
