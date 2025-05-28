@@ -125,7 +125,7 @@ export default class TagGeneratorPlugin extends Plugin {
         ]
 
         const llm = new LLMGeneration();
-        const tags = await llm.completionOpenAI(
+        const tags = await llm.completion(
             this.settings.model,
             this.settings.token,
             messages,
