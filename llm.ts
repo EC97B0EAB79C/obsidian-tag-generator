@@ -8,11 +8,19 @@ export class LLMGeneration {
         endpoint?: string
     ): Promise<string[]> {
         const provider = model.split('/')[0];
+        let response;
         if (provider === 'openai') {
-            return this.completionOpenAI(model, apiKey, messages, endpoint);
-        } else {
+            response = await this.completionOpenAI(model, apiKey, messages, endpoint);
+        }
+        else {
             throw new Error(`Unsupported provider: ${provider}`);
         }
+
+        if (!response) {
+            throw new Error("No response from LLM");
+        }
+        const json = JSON.parse(response);
+        return json.keywords || [];
     }
 
 
@@ -21,7 +29,7 @@ export class LLMGeneration {
         apiKey: string,
         messages: { role: string, content: string }[],
         endpoint?: string
-    ): Promise<string[]> {
+    ) {
         try {
             console.log("Generating completion with OpenAI:", model, endpoint);
             const client = new OpenAI({
@@ -40,13 +48,10 @@ export class LLMGeneration {
             });
             console.log("Response received:", response);
 
-            const jsonResponse = response.choices[0].message.content;
-            const json = JSON.parse(jsonResponse);
-
-            return json.keywords;
+            return response.choices[0].message.content;
         } catch (error) {
             console.error("Error generating tag:", error);
-            return [];
+            return;
         }
     }
 }
