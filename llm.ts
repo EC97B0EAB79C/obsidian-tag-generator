@@ -54,4 +54,28 @@ export class LLMGeneration {
             return;
         }
     }
+
+    async completionPPLX(
+        model: string,
+        apiKey: string,
+        messages: { role: string, content: string }[],
+    ) {
+        const options = {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+            body: `{"model":"${model}","messages":${JSON.stringify(messages)}}`
+        };
+
+        try {
+            console.log("Generating citation with Perplexity:", model);
+            const response = await fetch('https://api.perplexity.ai/chat/completions', options);
+            console.log("Response received:", response);
+
+            const data = await response.json();
+            return data.citations || [];
+        } catch (err) {
+            console.error(err);
+            return [];
+        }
+    }
 }

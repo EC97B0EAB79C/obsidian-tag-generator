@@ -46,6 +46,7 @@ const DEFAULT_SETTINGS: Partial<TagGeneratorPluginSettings> = {
 
 export default class TagGeneratorPlugin extends Plugin {
     settings: TagGeneratorPluginSettings;
+    llm = new LLMGeneration();
 
     async onload() {
         await this.loadSettings();
@@ -124,8 +125,7 @@ export default class TagGeneratorPlugin extends Plugin {
             { role: "user", content: text }
         ]
 
-        const llm = new LLMGeneration();
-        const tags = await llm.completion(
+        const tags = await this.llm.completion(
             this.settings.model,
             this.settings.token,
             messages,
