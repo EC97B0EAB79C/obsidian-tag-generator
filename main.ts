@@ -26,6 +26,9 @@ interface TagGeneratorPluginSettings {
     // Setting for selected text
     selTagLocationTop: boolean;
 
+    // PPLX Settings
+    pplxToken: string;
+    pplxModel: string;
 }
 
 const DEFAULT_SETTINGS: Partial<TagGeneratorPluginSettings> = {
@@ -42,6 +45,10 @@ const DEFAULT_SETTINGS: Partial<TagGeneratorPluginSettings> = {
 
     // Setting for selected text
     selTagLocationTop: true,
+
+    // PPLX Settings
+    pplxToken: '',
+    pplxModel: "sonar"
 };
 
 export default class TagGeneratorPlugin extends Plugin {

@@ -2,7 +2,7 @@ import TagGeneratorPlugin from './main';
 import { App, PluginSettingTab, Setting } from 'obsidian';
 
 
-const getModelOptions = [
+const modelOptions = [
     { name: 'OpenAI GPT-4.1-nano', value: 'openai/gpt-4.1-nano' },
     { name: 'OpenAI GPT-4.1-mini', value: 'openai/gpt-4.1-mini' },
     { name: 'OpenAI GPT-4.1', value: 'openai/gpt-4.1' },
@@ -45,7 +45,7 @@ export class TagGeneratorSettingTab extends PluginSettingTab {
             .setName('Model')
             .setDesc('Select the model to use for tag generation')
             .addDropdown((dropdown) => {
-                getModelOptions.forEach(opt =>
+                modelOptions.forEach(opt =>
                     dropdown.addOption(opt.value, opt.name)
                 );
                 dropdown
@@ -120,6 +120,24 @@ export class TagGeneratorSettingTab extends PluginSettingTab {
                     .onChange(async (value) => {
                         console.log('Setting selTagLocationTop to ' + value);
                         this.plugin.settings.selTagLocationTop = value;
+                        await this.plugin.saveSettings();
+                    })
+            );
+
+        // PPLX Settings
+        new Setting(containerEl)
+            .setHeading()
+            .setName('Perplexity Settings')
+
+        new Setting(containerEl)
+            .setName('PPLX API Key')
+            .setDesc('Enter your Perplexity API Key here')
+            .addText((text) =>
+                text
+                    .setPlaceholder('pplx_XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX')
+                    .setValue(this.plugin.settings.pplxToken)
+                    .onChange(async (value) => {
+                        this.plugin.settings.pplxToken = value;
                         await this.plugin.saveSettings();
                     })
             );
