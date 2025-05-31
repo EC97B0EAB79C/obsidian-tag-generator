@@ -10,6 +10,11 @@ const modelOptions = [
     { name: 'OpenAI GPT-4o mini', value: 'openai/gpt-4o-mini' },
 ];
 
+const pplxModelOptions = [
+    { name: 'Sonar Pro', value: 'sonar-pro' },
+    { name: 'Sonar', value: 'sonar' },
+];
+
 export class TagGeneratorSettingTab extends PluginSettingTab {
     plugin: TagGeneratorPlugin;
 
@@ -141,5 +146,20 @@ export class TagGeneratorSettingTab extends PluginSettingTab {
                         await this.plugin.saveSettings();
                     })
             );
+
+        new Setting(containerEl)
+            .setName('Model')
+            .setDesc('Select the model to use for search')
+            .addDropdown((dropdown) => {
+                pplxModelOptions.forEach(opt =>
+                    dropdown.addOption(opt.value, opt.name)
+                );
+                dropdown
+                    .setValue(this.plugin.settings.pplxModel)
+                    .onChange(async (value) => {
+                        this.plugin.settings.pplxModel = value;
+                        await this.plugin.saveSettings();
+                    });
+            });
     }
 }
