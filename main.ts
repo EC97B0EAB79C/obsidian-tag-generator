@@ -1,15 +1,6 @@
 import { Notice, Plugin, Editor, MarkdownView, getAllTags, MetadataCache } from 'obsidian';
 import { TagGeneratorSettingTab } from './settings';
-import { LLMGeneration } from './llm';
-
-const prompt = (nOfTagsCategory: number, nOfTagsGeneral: number, nOfTagsSpecific: number) => `This GPT helps users generate a set of relevant keywords or tags based on the content of any note or text they provide.
-It offers concise, descriptive, and relevant tags that help organize and retrieve similar notes or resources later.
-The GPT will aim to provide up to ${nOfTagsCategory + nOfTagsGeneral + nOfTagsSpecific} keywords, with ${nOfTagsCategory} keyword acting as a category, ${nOfTagsGeneral} general tags applicable to a broad context, and ${nOfTagsSpecific} being more specific to the content of the note.
-It avoids suggesting overly generic or redundant keywords unless necessary.
-It will list the tags using underscores instead of spaces, ordered from the most general to the most specific.
-Every tag will be lowercase.
-Return the list in json format with key "keywords" for keyword list.`;
-
+import { TagGeneration } from './tag_generation';
 
 interface TagGeneratorPluginSettings {
     // General settings
@@ -53,11 +44,12 @@ const DEFAULT_SETTINGS: Partial<TagGeneratorPluginSettings> = {
 
 export default class TagGeneratorPlugin extends Plugin {
     settings: TagGeneratorPluginSettings;
-    llm = new LLMGeneration();
+    tagGeneration: TagGeneration;
 
     async onload() {
         await this.loadSettings();
         this.addSettingTab(new TagGeneratorSettingTab(this.app, this));
+        this.tagGeneration = new TagGeneration(this);
 
         // Add a command to generate tags from the entire note
         this.addCommand({
@@ -66,7 +58,7 @@ export default class TagGeneratorPlugin extends Plugin {
             hotkeys: [{ modifiers: ['Alt'], key: 'n' }],
             editorCallback: async (editor: Editor, view: MarkdownView) => {
                 new Notice('Generating tag...');
-                const tags = await this.generateTagFromText(
+                const tags = await this.tagGeneration.generateTagFromText(
                     editor.getValue(),
                     view.getDisplayText()
                 );
@@ -93,7 +85,7 @@ export default class TagGeneratorPlugin extends Plugin {
                 }
 
                 new Notice('Generating tag...');
-                const tags = await this.generateTagFromText(
+                const tags = await this.tagGeneration.generateTagFromText(
                     selectedText,
                     view.getDisplayText(),
                     await this.getCurrentHeadingText(view)
@@ -115,31 +107,6 @@ export default class TagGeneratorPlugin extends Plugin {
 
     async saveSettings() {
         await this.saveData(this.settings);
-    }
-
-    async generateTagFromText(text: string, displayText: string, headingText?: string): Promise<string[]> {
-        const nOfTagsGeneral = Math.ceil((this.settings.nOfTags - 1) * this.settings.ratioOfGeneralSpecific);
-        const nOfTagsSpecific = (this.settings.nOfTags - 1) - nOfTagsGeneral;
-        const systemPrompt = prompt(1, nOfTagsGeneral, nOfTagsSpecific);
-        console.log("System prompt:", systemPrompt);
-
-        const userPrompt = `Generate tags for the following text from: note "${displayText}"${headingText ? ` > section "${headingText}"` : ''}`;
-        console.log("User prompt:", userPrompt);
-
-        const messages = [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: userPrompt },
-            { role: "user", content: text }
-        ]
-
-        const tags = await this.llm.completion(
-            this.settings.model,
-            this.settings.token,
-            messages,
-            this.settings.endpoint
-        );
-
-        return tags;
     }
 
     async addTagsToFrontmatter(tags: string[]) {
