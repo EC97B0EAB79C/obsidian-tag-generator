@@ -55,15 +55,23 @@ export class LLMGeneration {
         }
     }
 
-    async completionPPLX(
+    async citationPPLX(
         model: string,
         apiKey: string,
         messages: { role: string, content: string }[],
     ) {
+        const responseFormat = JSON.stringify(
+            {
+                type: "json_schema",
+                json_schema: {
+                    "schema": { "source": { "title": "string", "url": "string" } }
+                }
+            }
+        );
         const options = {
             method: 'POST',
             headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-            body: `{"model":"${model}","messages":${JSON.stringify(messages)}}`
+            body: `{"model":"${model}","messages":${JSON.stringify(messages)}}`,
         };
 
         try {
@@ -72,7 +80,8 @@ export class LLMGeneration {
             console.log("Response received:", response);
 
             const data = await response.json();
-            return data.citations || [];
+            console.log("Data received:", data.choices[0].message.content);
+            return data.choices[0].message.content.source || [];
         } catch (err) {
             console.error(err);
             return [];

@@ -1,6 +1,7 @@
 import { Notice, Plugin, Editor, MarkdownView, getAllTags, MetadataCache } from 'obsidian';
 import { TagGeneratorSettingTab } from './settings';
 import { TagGeneration } from './tag_generation';
+import { CiteGeneration } from './cite_generation';
 
 interface TagGeneratorPluginSettings {
     // General settings
@@ -45,11 +46,13 @@ const DEFAULT_SETTINGS: Partial<TagGeneratorPluginSettings> = {
 export default class TagGeneratorPlugin extends Plugin {
     settings: TagGeneratorPluginSettings;
     tagGeneration: TagGeneration;
+    citeGeneration: CiteGeneration;
 
     async onload() {
         await this.loadSettings();
         this.addSettingTab(new TagGeneratorSettingTab(this.app, this));
         this.tagGeneration = new TagGeneration(this);
+        this.citeGeneration = new CiteGeneration(this);
 
         // Add a command to generate tags from the entire note
         this.addCommand({
@@ -97,6 +100,19 @@ export default class TagGeneratorPlugin extends Plugin {
 
                 this.addTagsToSelection(editor, tags);
                 new Notice(`Tag generated`);
+            }
+        });
+
+        this.addCommand({
+            id: 'test-command',
+            name: 'Test Command',
+            editorCallback: async (editor: Editor, view: MarkdownView) => {
+                new Notice('Test command executed!');
+                const result = await this.citeGeneration.generateCiteFromText(
+                    editor.getValue(),
+                    view.getDisplayText()
+                );
+                console.log("Test command result:", result);
             }
         });
     }
