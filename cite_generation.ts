@@ -11,9 +11,7 @@ Prioritize sources such as:
 * Credible .gov or .edu websites
 
 Please output: 
-* only a JSON object
-* each fields containing title and url
-* do not include any other text or explanations
+* list of JSON object containing the following fields: title, url
 `;
 
 export class CiteGeneration {

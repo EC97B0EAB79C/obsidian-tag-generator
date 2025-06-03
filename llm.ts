@@ -60,18 +60,41 @@ export class LLMGeneration {
         apiKey: string,
         messages: { role: string, content: string }[],
     ) {
-        const responseFormat = JSON.stringify(
-            {
-                type: "json_schema",
+        const responseSchema = {
+            type: "object",
+            properties: {
+                sources: {
+                    type: "array",
+                    items: {
+                        type: "object",
+                        properties: {
+                            title: { type: "string" },
+                            url: { type: "string" }
+                        },
+                        required: ["title", "url"]
+                    }
+                }
+            },
+            required: ["sources"]
+        };
+
+        const body = {
+            model: model,
+            messages: messages,
+            response_format: {
+                type: 'json_schema',
                 json_schema: {
-                    "schema": { "source": { "title": "string", "url": "string" } }
+                    schema: responseSchema
                 }
             }
-        );
+        };
         const options = {
             method: 'POST',
-            headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-            body: `{"model":"${model}","messages":${JSON.stringify(messages)}}`,
+            headers: {
+                'Authorization': `Bearer ${apiKey}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(body),
         };
 
         try {
@@ -80,8 +103,9 @@ export class LLMGeneration {
             console.log("Response received:", response);
 
             const data = await response.json();
-            console.log("Data received:", data.choices[0].message.content);
-            return data.choices[0].message.content.source || [];
+            const sources = JSON.parse(data.choices[0].message.content).sources || [];
+            console.log("Data received:", sources);
+            return sources || [];
         } catch (err) {
             console.error(err);
             return [];
