@@ -110,6 +110,7 @@ export default class TagGeneratorPlugin extends Plugin {
             editorCallback: async (editor: Editor, view: MarkdownView) => {
                 new Notice('Searching citations...');
                 let value = editor.getValue();
+                const cursor = editor.getCursor();
                 const result = await this.citeGeneration.generateCiteFromText(
                     value,
                     view.getDisplayText()
@@ -123,6 +124,8 @@ export default class TagGeneratorPlugin extends Plugin {
                 const citation_list = this.generateCitationList(result);
                 value += citation_list;
                 editor.setValue(value);
+                editor.setCursor(cursor);
+                new Notice("Citation Added")
             }
         });
 
