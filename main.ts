@@ -1,15 +1,7 @@
 import { Notice, Plugin, Editor, MarkdownView, getAllTags, MetadataCache } from 'obsidian';
 import { TagGeneratorSettingTab } from './settings';
-import { LLMGeneration } from './llm';
-
-const prompt = (nOfTagsCategory: number, nOfTagsGeneral: number, nOfTagsSpecific: number) => `This GPT helps users generate a set of relevant keywords or tags based on the content of any note or text they provide.
-It offers concise, descriptive, and relevant tags that help organize and retrieve similar notes or resources later.
-The GPT will aim to provide up to ${nOfTagsCategory + nOfTagsGeneral + nOfTagsSpecific} keywords, with ${nOfTagsCategory} keyword acting as a category, ${nOfTagsGeneral} general tags applicable to a broad context, and ${nOfTagsSpecific} being more specific to the content of the note.
-It avoids suggesting overly generic or redundant keywords unless necessary.
-It will list the tags using underscores instead of spaces, ordered from the most general to the most specific.
-Every tag will be lowercase.
-Return the list in json format with key "keywords" for keyword list.`;
-
+import { TagGeneration } from './tag_generation';
+import { CiteGeneration } from './cite_generation';
 
 interface TagGeneratorPluginSettings {
     // General settings
@@ -26,6 +18,9 @@ interface TagGeneratorPluginSettings {
     // Setting for selected text
     selTagLocationTop: boolean;
 
+    // PPLX Settings
+    pplxToken: string;
+    pplxModel: string;
 }
 
 const DEFAULT_SETTINGS: Partial<TagGeneratorPluginSettings> = {
@@ -42,14 +37,23 @@ const DEFAULT_SETTINGS: Partial<TagGeneratorPluginSettings> = {
 
     // Setting for selected text
     selTagLocationTop: true,
+
+    // PPLX Settings
+    pplxToken: '',
+    pplxModel: "sonar"
 };
 
 export default class TagGeneratorPlugin extends Plugin {
     settings: TagGeneratorPluginSettings;
+    tagGeneration: TagGeneration;
+    citeGeneration: CiteGeneration;
 
+    // ---- Main Plugin Methods ----
     async onload() {
         await this.loadSettings();
         this.addSettingTab(new TagGeneratorSettingTab(this.app, this));
+        this.tagGeneration = new TagGeneration(this);
+        this.citeGeneration = new CiteGeneration(this);
 
         // Add a command to generate tags from the entire note
         this.addCommand({
@@ -58,7 +62,7 @@ export default class TagGeneratorPlugin extends Plugin {
             hotkeys: [{ modifiers: ['Alt'], key: 'n' }],
             editorCallback: async (editor: Editor, view: MarkdownView) => {
                 new Notice('Generating tag...');
-                const tags = await this.generateTagFromText(
+                const tags = await this.tagGeneration.generateTagFromText(
                     editor.getValue(),
                     view.getDisplayText()
                 );
@@ -85,7 +89,7 @@ export default class TagGeneratorPlugin extends Plugin {
                 }
 
                 new Notice('Generating tag...');
-                const tags = await this.generateTagFromText(
+                const tags = await this.tagGeneration.generateTagFromText(
                     selectedText,
                     view.getDisplayText(),
                     await this.getCurrentHeadingText(view)
@@ -99,6 +103,41 @@ export default class TagGeneratorPlugin extends Plugin {
                 new Notice(`Tag generated`);
             }
         });
+
+        this.addCommand({
+            id: 'search-citations',
+            name: 'Search citation for entire note',
+            editorCallback: async (editor: Editor, view: MarkdownView) => {
+                new Notice('Searching citations...');
+                let value = editor.getValue();
+                const cursor = editor.getCursor();
+                const result = await this.citeGeneration.generateCiteFromText(
+                    value,
+                    view.getDisplayText()
+                );
+
+                if (result.length == 0) {
+                    new Notice("Problem with the citations search");
+                    return;
+                }
+
+                const citation_list = this.generateCitationList(result);
+                value += citation_list;
+                editor.setValue(value);
+                editor.setCursor(cursor);
+                new Notice("Citation Added")
+            }
+        });
+
+        // this.addCommand({
+        //     id: 'test-command',
+        //     name: 'Test Command',
+        //     editorCallback: async (editor: Editor, view: MarkdownView) => {
+        //         new Notice('Test Command Activated...');
+
+        //         editor.setValue('test');
+        //     }
+        // })
     }
 
     async loadSettings() {
@@ -109,32 +148,8 @@ export default class TagGeneratorPlugin extends Plugin {
         await this.saveData(this.settings);
     }
 
-    async generateTagFromText(text: string, displayText: string, headingText?: string): Promise<string[]> {
-        const nOfTagsGeneral = Math.ceil((this.settings.nOfTags - 1) * this.settings.ratioOfGeneralSpecific);
-        const nOfTagsSpecific = (this.settings.nOfTags - 1) - nOfTagsGeneral;
-        const systemPrompt = prompt(1, nOfTagsGeneral, nOfTagsSpecific);
-        console.log("System prompt:", systemPrompt);
 
-        const userPrompt = `Generate tags for the following text from: note "${displayText}"${headingText ? ` > section "${headingText}"` : ''}`;
-        console.log("User prompt:", userPrompt);
-
-        const messages = [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: userPrompt },
-            { role: "user", content: text }
-        ]
-
-        const llm = new LLMGeneration();
-        const tags = await llm.completion(
-            this.settings.model,
-            this.settings.token,
-            messages,
-            this.settings.endpoint
-        );
-
-        return tags;
-    }
-
+    // ---- Helper Methods ----
     async addTagsToFrontmatter(tags: string[]) {
         const file = this.app.workspace.getActiveFile();
         if (!file) {
@@ -157,6 +172,12 @@ export default class TagGeneratorPlugin extends Plugin {
             replaceText = selectedText + "\n\n" + tagString;
         }
         editor.replaceSelection(replaceText);
+    }
+
+    generateCitationList(citations: object[]) {
+        let list = citations.map(citation => `- [${citation['title']}](${citation['url']})`).join('\n')
+        list = "\n\n## Citations\n" + list + "\n";
+        return list
     }
 
     async getCurrentHeadingText(view: MarkdownView): Promise<string> {

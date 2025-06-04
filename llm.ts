@@ -54,4 +54,61 @@ export class LLMGeneration {
             return;
         }
     }
+
+    async citationPPLX(
+        model: string,
+        apiKey: string,
+        messages: { role: string, content: string }[],
+    ) {
+        const responseSchema = {
+            type: "object",
+            properties: {
+                sources: {
+                    type: "array",
+                    items: {
+                        type: "object",
+                        properties: {
+                            title: { type: "string" },
+                            url: { type: "string" }
+                        },
+                        required: ["title", "url"]
+                    }
+                }
+            },
+            required: ["sources"]
+        };
+
+        const body = {
+            model: model,
+            messages: messages,
+            response_format: {
+                type: 'json_schema',
+                json_schema: {
+                    schema: responseSchema
+                }
+            }
+        };
+        const options = {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${apiKey}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(body),
+        };
+
+        try {
+            console.log("Generating citation with Perplexity:", model);
+            const response = await fetch('https://api.perplexity.ai/chat/completions', options);
+            console.log("Response received:", response);
+
+            const data = await response.json();
+            const sources = JSON.parse(data.choices[0].message.content).sources || [];
+            console.log("Data received:", sources);
+            return sources || [];
+        } catch (err) {
+            console.error(err);
+            return [];
+        }
+    }
 }
