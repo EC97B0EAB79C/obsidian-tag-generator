@@ -48,6 +48,7 @@ export default class TagGeneratorPlugin extends Plugin {
     tagGeneration: TagGeneration;
     citeGeneration: CiteGeneration;
 
+    // ---- Main Plugin Methods ----
     async onload() {
         await this.loadSettings();
         this.addSettingTab(new TagGeneratorSettingTab(this.app, this));
@@ -104,17 +105,36 @@ export default class TagGeneratorPlugin extends Plugin {
         });
 
         this.addCommand({
-            id: 'test-command',
-            name: 'Test Command',
+            id: 'search-citations',
+            name: 'Search citation for entire note',
             editorCallback: async (editor: Editor, view: MarkdownView) => {
-                new Notice('Test command executed!');
+                new Notice('Searching citations...');
+                let value = editor.getValue();
                 const result = await this.citeGeneration.generateCiteFromText(
-                    editor.getValue(),
+                    value,
                     view.getDisplayText()
                 );
-                console.log("Test command result:", result);
+
+                if (result.length == 0) {
+                    new Notice("Problem with the citations search");
+                    return;
+                }
+
+                const citation_list = this.generateCitationList(result);
+                value += citation_list;
+                editor.setValue(value);
             }
         });
+
+        // this.addCommand({
+        //     id: 'test-command',
+        //     name: 'Test Command',
+        //     editorCallback: async (editor: Editor, view: MarkdownView) => {
+        //         new Notice('Test Command Activated...');
+
+        //         editor.setValue('test');
+        //     }
+        // })
     }
 
     async loadSettings() {
@@ -125,6 +145,8 @@ export default class TagGeneratorPlugin extends Plugin {
         await this.saveData(this.settings);
     }
 
+
+    // ---- Helper Methods ----
     async addTagsToFrontmatter(tags: string[]) {
         const file = this.app.workspace.getActiveFile();
         if (!file) {
@@ -147,6 +169,12 @@ export default class TagGeneratorPlugin extends Plugin {
             replaceText = selectedText + "\n\n" + tagString;
         }
         editor.replaceSelection(replaceText);
+    }
+
+    generateCitationList(citations: object[]) {
+        let list = citations.map(citation => `- [${citation['title']}](${citation['url']})`).join('\n')
+        list = "\n\n## Citations\n" + list + "\n";
+        return list
     }
 
     async getCurrentHeadingText(view: MarkdownView): Promise<string> {

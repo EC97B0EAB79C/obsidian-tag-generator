@@ -23,7 +23,7 @@ export class CiteGeneration {
         this.llm = new LLMGeneration();
     }
 
-    async generateCiteFromText(text: string, displayText: string, headingText?: string): Promise<string[]> {
+    async generateCiteFromText(text: string, displayText: string, headingText?: string): Promise<object[]> {
         const systemPrompt = prompt;
         console.log("System prompt:", systemPrompt);
 
