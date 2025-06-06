@@ -92,7 +92,7 @@ export default class TagGeneratorPlugin extends Plugin {
                 const tags = await this.tagGeneration.generateTagFromText(
                     selectedText,
                     view.getDisplayText(),
-                    await this.getCurrentHeadingText(view)
+                    (await this.getCurrentHeadingText(view)).heading
                 );
                 if (!tags || tags.length === 0) {
                     new Notice('Problem with the tag generation');
@@ -125,6 +125,35 @@ export default class TagGeneratorPlugin extends Plugin {
                 value += citation_list;
                 editor.setValue(value);
                 editor.setCursor(cursor);
+                new Notice("Citation Added")
+            }
+        });
+
+        this.addCommand({
+            id: 'search-citations-selected',
+            name: 'Search citation for selected text',
+            editorCallback: async (editor: Editor, view: MarkdownView) => {
+                const selectedText = editor.getSelection();
+                if (!selectedText) {
+                    new Notice('No text selected');
+                    return;
+                }
+                const heading = await this.getCurrentHeadingText(view);
+
+                new Notice('Searching citations...');
+                const result = await this.citeGeneration.generateCiteFromText(
+                    selectedText,
+                    view.getDisplayText(),
+                    heading.heading,
+                );
+
+                if (result.length == 0) {
+                    new Notice("Problem with the citations search");
+                    return;
+                }
+
+                const citation_list = this.generateCitationList(result, heading.level + 1);
+                editor.replaceSelection(selectedText + citation_list);
                 new Notice("Citation Added")
             }
         });
@@ -174,25 +203,27 @@ export default class TagGeneratorPlugin extends Plugin {
         editor.replaceSelection(replaceText);
     }
 
-    generateCitationList(citations: object[]) {
+    generateCitationList(citations: object[], level: number = 2): string {
         let list = citations.map(citation => `- [${citation['title']}](${citation['url']})`).join('\n')
-        list = "\n\n## Citations\n" + list + "\n";
+        list = `\n\n${"#".repeat(level)} Citations\n` + list + "\n";
         return list
     }
 
-    async getCurrentHeadingText(view: MarkdownView): Promise<string> {
+    async getCurrentHeadingText(view: MarkdownView): Promise<{ heading: string, level: number }> {
         const cursorLine = view.editor.getCursor("from").line - 1;
         const cache = this.app.metadataCache.getFileCache(this.app.workspace.getActiveFile());
 
         let currentHeading = '';
+        let headingLevel = 0;
         for (const h of cache.headings) {
             if (h.position.start.line <= cursorLine) {
                 currentHeading = h.heading;
+                headingLevel = h.level;
             } else {
                 break;
             }
         }
 
-        return currentHeading;
+        return { heading: currentHeading, level: headingLevel };
     }
 }
