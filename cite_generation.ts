@@ -35,7 +35,7 @@ export class CiteGeneration {
             { "role": "user", "content": `${userPrompt}\n\n${text}` }
         ]
 
-        const cites = await this.llm.citationPPLX(
+        const cites = await this.llm.citation(
             this.plugin.settings.pplxModel,
             this.plugin.settings.pplxToken,
             messages

@@ -40,7 +40,7 @@ const DEFAULT_SETTINGS: Partial<TagGeneratorPluginSettings> = {
 
     // PPLX Settings
     pplxToken: '',
-    pplxModel: "sonar"
+    pplxModel: "pplx/sonar"
 };
 
 export default class TagGeneratorPlugin extends Plugin {

@@ -11,8 +11,8 @@ const modelOptions = [
 ];
 
 const pplxModelOptions = [
-    { name: 'Sonar Pro', value: 'sonar-pro' },
-    { name: 'Sonar', value: 'sonar' },
+    { name: 'Sonar Pro', value: 'pplx/sonar-pro' },
+    { name: 'Sonar', value: 'pplx/sonar' },
 ];
 
 export class TagGeneratorSettingTab extends PluginSettingTab {
