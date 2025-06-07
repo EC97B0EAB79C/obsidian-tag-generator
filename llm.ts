@@ -3,14 +3,14 @@ import OpenAI from "openai";
 export class LLMGeneration {
     async completion(
         model: string,
-        apiKey: string,
+        apiKey: {},
         messages: { role: string, content: string }[],
-        endpoint?: string
+        endpoint: {}
     ): Promise<string[]> {
         const provider = model.split('/')[0];
         let response;
         if (provider === 'openai') {
-            response = await this.completionOpenAI(model, apiKey, messages, endpoint);
+            response = await this.completionOpenAI(model, apiKey["openai"], messages, endpoint["openai"]);
         }
         else {
             throw new Error(`Unsupported provider: ${provider}`);

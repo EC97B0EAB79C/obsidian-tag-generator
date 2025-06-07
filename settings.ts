@@ -28,23 +28,11 @@ export class TagGeneratorSettingTab extends PluginSettingTab {
 
         containerEl.empty();
 
-        // LLM Settings
+        // ---- Plugin Settings -----------------------------------------------------
+        // Tag Generator Settings
         new Setting(containerEl)
             .setHeading()
-            .setName('LLM Settings')
-
-        new Setting(containerEl)
-            .setName('API Token')
-            .setDesc('Enter your API Token here')
-            .addText((text) =>
-                text
-                    .setPlaceholder('ghp_XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX')
-                    .setValue(this.plugin.settings.token)
-                    .onChange(async (value) => {
-                        this.plugin.settings.token = value;
-                        await this.plugin.saveSettings();
-                    })
-            );
+            .setName('Tag Generator Settings');
 
         new Setting(containerEl)
             .setName('Model')
@@ -54,30 +42,12 @@ export class TagGeneratorSettingTab extends PluginSettingTab {
                     dropdown.addOption(opt.value, opt.name)
                 );
                 dropdown
-                    .setValue(this.plugin.settings.model)
+                    .setValue(this.plugin.settings.modelTagGeneration)
                     .onChange(async (value) => {
-                        this.plugin.settings.model = value;
+                        this.plugin.settings.modelTagGeneration = value;
                         await this.plugin.saveSettings();
                     });
             });
-
-        new Setting(containerEl)
-            .setName('API Endpoint')
-            .setDesc('Enter your API Endpoint here (optional)')
-            .addText((text) =>
-                text
-                    .setPlaceholder('https://api.openai.com/v1')
-                    .setValue(this.plugin.settings.endpoint)
-                    .onChange(async (value) => {
-                        this.plugin.settings.endpoint = value;
-                        await this.plugin.saveSettings();
-                    })
-            );
-
-        // Tag Generation Settings
-        new Setting(containerEl)
-            .setHeading()
-            .setName('Tag Generation Settings')
 
         new Setting(containerEl)
             .setName('Number of Tags')
@@ -103,18 +73,13 @@ export class TagGeneratorSettingTab extends PluginSettingTab {
                     .setPlaceholder('0.4')
                     .setValue(this.plugin.settings.ratioOfGeneralSpecific.toString())
                     .onChange(async (value) => {
-                        const num = parseInt(value);
+                        const num = parseFloat(value);
                         if (!isNaN(num) && num >= 0 && num <= 1) {
                             this.plugin.settings.ratioOfGeneralSpecific = num;
                             await this.plugin.saveSettings();
                         }
                     })
             );
-
-        // Setting for Selected Text Generation
-        new Setting(containerEl)
-            .setHeading()
-            .setName('Selected Text Settings')
 
         new Setting(containerEl)
             .setName('Tag Location')
@@ -129,37 +94,84 @@ export class TagGeneratorSettingTab extends PluginSettingTab {
                     })
             );
 
-        // PPLX Settings
+        // Citation Settings
         new Setting(containerEl)
             .setHeading()
-            .setName('Perplexity Settings')
-
-        new Setting(containerEl)
-            .setName('PPLX API Key')
-            .setDesc('Enter your Perplexity API Key here')
-            .addText((text) =>
-                text
-                    .setPlaceholder('pplx_XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX')
-                    .setValue(this.plugin.settings.pplxToken)
-                    .onChange(async (value) => {
-                        this.plugin.settings.pplxToken = value;
-                        await this.plugin.saveSettings();
-                    })
-            );
+            .setName('Citation Settings');
 
         new Setting(containerEl)
             .setName('Model')
-            .setDesc('Select the model to use for search')
+            .setDesc('Select the model to use for citation generation')
             .addDropdown((dropdown) => {
                 pplxModelOptions.forEach(opt =>
                     dropdown.addOption(opt.value, opt.name)
                 );
                 dropdown
-                    .setValue(this.plugin.settings.pplxModel)
+                    .setValue(this.plugin.settings.modelCiteGeneration)
                     .onChange(async (value) => {
-                        this.plugin.settings.pplxModel = value;
+                        this.plugin.settings.modelCiteGeneration = value;
                         await this.plugin.saveSettings();
                     });
             });
+
+        // ---- API Settings -----------------------------------------------------
+        new Setting(containerEl)
+            .setHeading()
+            .setName('API Settings');
+
+        // OpenAI Settings
+        new Setting(containerEl)
+            .setName('OpenAI API Token')
+            .setDesc('Enter your OpenAI API Token here')
+            .addText((text) =>
+                text
+                    .setPlaceholder('sk-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX')
+                    .setValue(this.plugin.settings.token.openai)
+                    .onChange(async (value) => {
+                        this.plugin.settings.token["openai"] = value;
+                        await this.plugin.saveSettings();
+                    })
+            );
+
+        new Setting(containerEl)
+            .setName('OpenAI API Endpoint')
+            .setDesc('Enter your OpenAI API Endpoint here (optional)')
+            .addText((text) =>
+                text
+                    .setPlaceholder('https://api.openai.com/v1')
+                    .setValue(this.plugin.settings.endpoint["openai"])
+                    .onChange(async (value) => {
+                        this.plugin.settings.endpoint["openai"] = value;
+                        await this.plugin.saveSettings();
+                    })
+            );
+
+        // PPLX Settings
+        new Setting(containerEl)
+            .setName('Perplexity API Key')
+            .setDesc('Enter your Perplexity API Key here')
+            .addText((text) =>
+                text
+                    .setPlaceholder('pplx_XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX')
+                    .setValue(this.plugin.settings.token.pplx)
+                    .onChange(async (value) => {
+                        this.plugin.settings.token.pplx = value;
+                        await this.plugin.saveSettings();
+                    })
+            );
+
+        // Gemini Settings
+        new Setting(containerEl)
+            .setName('Gemini API Token')
+            .setDesc('Enter your Gemini API Token here')
+            .addText((text) =>
+                text
+                    .setPlaceholder('XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX')
+                    .setValue(this.plugin.settings.token.gemini)
+                    .onChange(async (value) => {
+                        this.plugin.settings.token.gemini = value;
+                        await this.plugin.saveSettings();
+                    })
+            );
     }
 }

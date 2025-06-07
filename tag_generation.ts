@@ -34,7 +34,7 @@ export class TagGeneration {
         ]
 
         const tags = await this.llm.completion(
-            this.plugin.settings.model,
+            this.plugin.settings.modelTagGeneration,
             this.plugin.settings.token,
             messages,
             this.plugin.settings.endpoint
