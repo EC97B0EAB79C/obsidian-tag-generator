@@ -75,15 +75,15 @@ export class LLMGeneration {
     // --- Citation Methods ----------------------------------------------------------------
     async citation(
         model: string,
-        apiKey: string,
+        apiKey: {},
         messages: { role: string, content: string }[],
-        endpoint?: string
+        endpoint?: {}
     ) {
         const provider = model.split('/')[0];
         let response;
         if (provider === 'pplx') {
             const modelName = model.split('/')[1];
-            response = await this.citationPPLX(modelName, apiKey, messages);
+            response = await this.citationPPLX(modelName, apiKey["pplx"], messages);
         }
         else {
             throw new Error(`Unsupported provider: ${provider}`);
