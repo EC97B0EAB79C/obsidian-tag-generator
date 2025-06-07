@@ -1,7 +1,8 @@
 import OpenAI from "openai";
 
 export class LLMGeneration {
-    async completion(
+    // --- Tag Generation Methods ----------------------------------------------------------------
+    async tagGeneration(
         model: string,
         apiKey: {},
         messages: { role: string, content: string }[],
@@ -23,8 +24,7 @@ export class LLMGeneration {
         return json.keywords || [];
     }
 
-
-    async completionOpenAI(
+    async tagGenerationOpenAI(
         model: string,
         apiKey: string,
         messages: { role: string, content: string }[],
@@ -53,6 +53,63 @@ export class LLMGeneration {
             console.error("Error generating tag:", error);
             return;
         }
+    }
+
+    async tagGenerationPPLX(
+        model: string,
+        apiKey: string,
+        messages: { role: string, content: string }[],
+    ) {
+        throw new Error("Perplexity model is not implemented yet.");
+    }
+
+    async tagGenerationGemini(
+        model: string,
+        apiKey: string,
+        messages: { role: string, content: string }[],
+    ) {
+        throw new Error("Gemini model is not implemented yet.");
+    }
+
+
+    // --- Citation Methods ----------------------------------------------------------------
+    async citation(
+        model: string,
+        apiKey: string,
+        messages: { role: string, content: string }[],
+        endpoint?: string
+    ) {
+        const provider = model.split('/')[0];
+        let response;
+        if (provider === 'pplx') {
+            const modelName = model.split('/')[1];
+            response = await this.citationPPLX(modelName, apiKey, messages);
+        }
+        else {
+            throw new Error(`Unsupported provider: ${provider}`);
+        }
+
+        if (!response) {
+            throw new Error("No response from LLM");
+        }
+        return response;
+    }
+
+    async citationOpenAI(
+        model: string,
+        apiKey: string,
+        messages: { role: string, content: string }[],
+        endpoint?: string
+    ) {
+        throw new Error("OpenAI citation generation is not implemented yet.");
+    }
+
+    async citationGemini(
+        model: string,
+        apiKey: string,
+        messages: { role: string, content: string }[],
+    ) {
+        throw new Error("Gemini citation generation is not implemented yet.");
     }
 
     async citationPPLX(
