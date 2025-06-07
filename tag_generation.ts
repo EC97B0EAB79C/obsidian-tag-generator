@@ -33,8 +33,8 @@ export class TagGeneration {
             { role: "user", content: text }
         ]
 
-        const tags = await this.llm.tagGeneration(
-            this.plugin.settings.model,
+        const tags = await this.llm.completion(
+            this.plugin.settings.modelTagGeneration,
             this.plugin.settings.token,
             messages,
             this.plugin.settings.endpoint

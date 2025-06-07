@@ -36,8 +36,8 @@ export class CiteGeneration {
         ]
 
         const cites = await this.llm.citation(
-            this.plugin.settings.pplxModel,
-            this.plugin.settings.pplxToken,
+            this.plugin.settings.modelCiteGeneration,
+            this.plugin.settings.token.pplx,
             messages
         );
 

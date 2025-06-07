@@ -4,43 +4,35 @@ import { TagGeneration } from './tag_generation';
 import { CiteGeneration } from './cite_generation';
 
 interface TagGeneratorPluginSettings {
-    // General settings
-    token: string;
-    model: string;
-    endpoint: string;
-
+    // ---- Plugin Settings -----------------------------------------------------
     // Tag generation settings
+    modelTagGeneration: string;
     nOfTags: number;
     ratioOfGeneralSpecific: number;
-
-    // Setting for entire note
-
-    // Setting for selected text
     selTagLocationTop: boolean;
 
-    // PPLX Settings
-    pplxToken: string;
-    pplxModel: string;
+    // Citation settings
+    modelCiteGeneration: string;
+
+    // ---- API Settings -----------------------------------------------------
+    token: { openai: string, pplx: string, gemini: string };
+    endpoint: { openai: string };
 }
 
 const DEFAULT_SETTINGS: Partial<TagGeneratorPluginSettings> = {
-    // General settings
-    token: '',
-    model: "openai/gpt-4.1-mini",
-    endpoint: '',
-
+    // ---- Plugin Settings -----------------------------------------------------
     // Tag generation settings
+    modelTagGeneration: "openai/gpt-4.1-mini",
     nOfTags: 10,
     ratioOfGeneralSpecific: 0.4,
-
-    // Setting for entire note
-
-    // Setting for selected text
     selTagLocationTop: true,
 
-    // PPLX Settings
-    pplxToken: '',
-    pplxModel: "pplx/sonar"
+    // Citation settings
+    modelCiteGeneration: "sonar",
+
+    // ---- API Settings -----------------------------------------------------
+    token: { openai: '', pplx: '', gemini: '' },
+    endpoint: { openai: '' }
 };
 
 export default class TagGeneratorPlugin extends Plugin {
@@ -48,14 +40,14 @@ export default class TagGeneratorPlugin extends Plugin {
     tagGeneration: TagGeneration;
     citeGeneration: CiteGeneration;
 
-    // ---- Main Plugin Methods ----
+    // ---- Main Plugin Methods --------------------------------------------------------------
     async onload() {
         await this.loadSettings();
         this.addSettingTab(new TagGeneratorSettingTab(this.app, this));
         this.tagGeneration = new TagGeneration(this);
         this.citeGeneration = new CiteGeneration(this);
 
-        // Add a command to generate tags from the entire note
+        // ---- Tag Generation Commands -----------------------------------------------------
         this.addCommand({
             id: 'generate-tag-note',
             name: 'Generate tag for entire note',
@@ -76,7 +68,6 @@ export default class TagGeneratorPlugin extends Plugin {
             }
         });
 
-        // Add a command to generate tags from the selected text
         this.addCommand({
             id: 'generate-tag-selected',
             name: 'Generate tag for selected text',
@@ -104,6 +95,7 @@ export default class TagGeneratorPlugin extends Plugin {
             }
         });
 
+        // ---- Citation Search Commands -----------------------------------------------------
         this.addCommand({
             id: 'search-citations',
             name: 'Search citation for entire note',
@@ -171,6 +163,12 @@ export default class TagGeneratorPlugin extends Plugin {
 
     async loadSettings() {
         this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+        if (typeof this.settings.token === 'string') {
+            this.settings.token = { openai: '', pplx: '', gemini: '' };
+        }
+        if (typeof this.settings.endpoint === 'string') {
+            this.settings.endpoint = { openai: '' };
+        }
     }
 
     async saveSettings() {
@@ -178,7 +176,7 @@ export default class TagGeneratorPlugin extends Plugin {
     }
 
 
-    // ---- Helper Methods ----
+    // ---- Helper Methods -----------------------------------------------------
     async addTagsToFrontmatter(tags: string[]) {
         const file = this.app.workspace.getActiveFile();
         if (!file) {
