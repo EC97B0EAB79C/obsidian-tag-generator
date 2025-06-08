@@ -8,11 +8,13 @@ const modelOptions = [
     { name: 'OpenAI GPT-4.1', value: 'openai/gpt-4.1' },
     { name: 'OpenAI GPT-4o', value: 'openai/gpt-4o' },
     { name: 'OpenAI GPT-4o mini', value: 'openai/gpt-4o-mini' },
-];
-
-const pplxModelOptions = [
     { name: 'Sonar Pro', value: 'pplx/sonar-pro' },
     { name: 'Sonar', value: 'pplx/sonar' },
+    { name: 'Gemini 2.5 Flash Preview', value: 'gemini/gemini-2.5-flash-preview-05-20' },
+    { name: 'Gemini 2.0 Flash', value: 'gemini/gemini-2.0-flash' },
+    { name: 'Gemini 2.0 Flash-Lite', value: 'gemini/gemini-2.0-flash-lite' },
+    { name: 'Gemini 1.5 Flash', value: 'gemini/gemini-1.5-flash' },
+    { name: 'Gemini 1.5 Pro', value: 'gemini/gemini-1.5-pro' },
 ];
 
 export class TagGeneratorSettingTab extends PluginSettingTab {
@@ -103,7 +105,7 @@ export class TagGeneratorSettingTab extends PluginSettingTab {
             .setName('Model')
             .setDesc('Select the model to use for citation generation')
             .addDropdown((dropdown) => {
-                pplxModelOptions.forEach(opt =>
+                modelOptions.forEach(opt =>
                     dropdown.addOption(opt.value, opt.name)
                 );
                 dropdown
