@@ -1,17 +1,28 @@
 import OpenAI from "openai";
+import { GoogleGenAI, Type } from "@google/genai";
+
 
 export class LLMGeneration {
     // --- Tag Generation Methods ----------------------------------------------------------------
     async tagGeneration(
         model: string,
         apiKey: {},
-        messages: { role: string, content: string }[],
+        systemPrompt: string,
+        userContent: string,
         endpoint: {}
     ): Promise<string[]> {
         const provider = model.split('/')[0];
         let response;
         if (provider === 'openai') {
-            response = await this.completionOpenAI(model, apiKey["openai"], messages, endpoint["openai"]);
+            const messages = [
+                { role: "system", content: systemPrompt },
+                { role: "user", content: userContent }
+            ];
+            response = await this.tagGenerationOpenAI(model, apiKey["openai"], messages, endpoint["openai"]);
+        }
+        else if (provider === 'gemini') {
+            const modelName = model.split('/')[1];
+            response = await this.tagGenerationGemini(modelName, apiKey["gemini"], systemPrompt, userContent);
         }
         else {
             throw new Error(`Unsupported provider: ${provider}`);
@@ -66,9 +77,42 @@ export class LLMGeneration {
     async tagGenerationGemini(
         model: string,
         apiKey: string,
-        messages: { role: string, content: string }[],
+        systemPrompt: string,
+        userContent: string,
     ) {
-        throw new Error("Gemini model is not implemented yet.");
+        try {
+
+            console.log("Generating completion with Gemini:", model);
+            const genAI = new GoogleGenAI({ apiKey: apiKey });
+            console.log("Client created:", genAI);
+
+            const response = await genAI.models.generateContent({
+                model: model,
+                contents: userContent,
+                config: {
+                    responseMimeType: "application/json",
+                    responseSchema: {
+                        type: Type.OBJECT,
+                        properties: {
+                            keywords: {
+                                type: Type.ARRAY,
+                                items: {
+                                    type: Type.STRING
+                                }
+                            }
+                        },
+                        required: ["keywords"]
+                    },
+                    systemInstruction: systemPrompt,
+                }
+            });
+            console.log("Response received:", response);
+
+            return response.text;
+        } catch (error) {
+            console.error("Error generating tag:", error);
+            return "[]";
+        }
     }
 
 
