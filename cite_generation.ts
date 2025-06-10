@@ -12,6 +12,7 @@ Prioritize sources such as:
 
 Please output: 
 * list of JSON object containing the following fields: title, url
+* return the list of sources with key: sources
 `;
 
 export class CiteGeneration {
@@ -37,6 +38,7 @@ export class CiteGeneration {
             this.plugin.settings.token,
             systemPrompt,
             userContent,
+            this.plugin.settings.endpoint
         );
 
         return cites;

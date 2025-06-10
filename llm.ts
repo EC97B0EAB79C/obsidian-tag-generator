@@ -176,7 +176,14 @@ export class LLMGeneration {
     ) {
         const provider = model.split('/')[0];
         let response;
-        if (provider === 'pplx') {
+        if (provider === 'openai') {
+            const messages = [
+                { role: "system", content: systemPrompt },
+                { role: "user", content: userContent }
+            ];
+            response = await this.citationOpenAI(model, apiKey["openai"], messages, endpoint["openai"] || undefined);
+        }
+        else if (provider === 'pplx') {
             const modelName = model.split('/')[1];
             const messages = [
                 { role: "system", content: systemPrompt },
@@ -204,7 +211,33 @@ export class LLMGeneration {
         messages: { role: string, content: string }[],
         endpoint?: string
     ) {
-        throw new Error("OpenAI citation generation is not implemented yet.");
+        try {
+            console.log("Generating citation with OpenAI:", model, endpoint);
+            const client = new OpenAI({
+                baseURL: endpoint,
+                apiKey: apiKey,
+                dangerouslyAllowBrowser: true
+            });
+            console.log("Client created:", client);
+
+            const response = await client.chat.completions.create({
+                messages: messages,
+                temperature: 1.0,
+                top_p: 1.0,
+                model: model,
+                response_format: { type: "json_object" },
+            });
+            console.log("Response received:", response);
+
+            const data = response.choices[0].message.content;
+            console.log("Data received:", data);
+            const sources = JSON.parse(data).sources || [];
+            return sources || [];
+        }
+        catch (error) {
+            console.error("Error generating citation:", error);
+            return [];
+        }
     }
 
     async citationGemini(
