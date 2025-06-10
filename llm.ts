@@ -66,14 +66,6 @@ export class LLMGeneration {
         }
     }
 
-    async tagGenerationPPLX(
-        model: string,
-        apiKey: string,
-        messages: { role: string, content: string }[],
-    ) {
-        throw new Error("Perplexity model is not implemented yet.");
-    }
-
     async tagGenerationGemini(
         model: string,
         apiKey: string,
@@ -115,18 +107,31 @@ export class LLMGeneration {
         }
     }
 
+    async tagGenerationPPLX(
+        model: string,
+        apiKey: string,
+        messages: { role: string, content: string }[],
+    ) {
+        throw new Error("Perplexity model is not implemented yet.");
+    }
+
 
     // --- Citation Methods ----------------------------------------------------------------
     async citation(
         model: string,
         apiKey: {},
-        messages: { role: string, content: string }[],
+        systemPrompt: string,
+        userContent: string,
         endpoint?: {}
     ) {
         const provider = model.split('/')[0];
         let response;
         if (provider === 'pplx') {
             const modelName = model.split('/')[1];
+            const messages = [
+                { role: "system", content: systemPrompt },
+                { role: "user", content: userContent }
+            ];
             response = await this.citationPPLX(modelName, apiKey["pplx"], messages);
         }
         else {
