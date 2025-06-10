@@ -73,7 +73,6 @@ export class LLMGeneration {
         userContent: string,
     ) {
         try {
-
             console.log("Generating completion with Gemini:", model);
             const genAI = new GoogleGenAI({ apiKey: apiKey });
             console.log("Client created:", genAI);
@@ -134,6 +133,10 @@ export class LLMGeneration {
             ];
             response = await this.citationPPLX(modelName, apiKey["pplx"], messages);
         }
+        else if (provider === 'gemini') {
+            const modelName = model.split('/')[1];
+            response = await this.citationGemini(modelName, apiKey["gemini"], systemPrompt, userContent);
+        }
         else {
             throw new Error(`Unsupported provider: ${provider}`);
         }
@@ -156,9 +159,49 @@ export class LLMGeneration {
     async citationGemini(
         model: string,
         apiKey: string,
-        messages: { role: string, content: string }[],
+        systemPrompt: string,
+        userContent: string,
     ) {
-        throw new Error("Gemini citation generation is not implemented yet.");
+        try {
+            console.log("Generating citation with Gemini:", model);
+            const genAI = new GoogleGenAI({ apiKey: apiKey });
+            console.log("Client created:", genAI);
+
+            const response = await genAI.models.generateContent({
+                model: model,
+                contents: userContent,
+                config: {
+                    responseMimeType: "application/json",
+                    responseSchema: {
+                        type: Type.OBJECT,
+                        properties: {
+                            sources: {
+                                type: Type.ARRAY,
+                                items: {
+                                    type: Type.OBJECT,
+                                    properties: {
+                                        title: { type: Type.STRING },
+                                        url: { type: Type.STRING }
+                                    },
+                                    required: ["title", "url"]
+                                }
+                            }
+                        },
+                        required: ["sources"]
+                    },
+                    systemInstruction: systemPrompt,
+                }
+            });
+            console.log("Response received:", response);
+            if (!response.text) {
+                throw new Error("No text in response");
+            }
+
+            return JSON.parse(response.text).sources || [];
+        } catch (error) {
+            console.error("Error generating citation:", error);
+            return [];
+        }
     }
 
     async citationPPLX(
