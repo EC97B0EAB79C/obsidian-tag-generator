@@ -30,15 +30,13 @@ export class CiteGeneration {
         const userPrompt = `Search citations for the following text from: note '${displayText}'${headingText ? ` > section '${headingText}'` : ''}`;
         console.log("User prompt:", userPrompt);
 
-        const messages = [
-            { "role": "system", "content": systemPrompt },
-            { "role": "user", "content": `${userPrompt}\n\n${text}` }
-        ]
+        const userContent = `${userPrompt}\n\n${text}`;
 
-        const cites = await this.llm.citationPPLX(
-            this.plugin.settings.pplxModel,
-            this.plugin.settings.pplxToken,
-            messages
+        const cites = await this.llm.citation(
+            this.plugin.settings.modelCiteGeneration,
+            this.plugin.settings.token,
+            systemPrompt,
+            userContent,
         );
 
         return cites;

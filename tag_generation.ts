@@ -27,16 +27,14 @@ export class TagGeneration {
         const userPrompt = `Generate tags for the following text from: note "${displayText}"${headingText ? ` > section "${headingText}"` : ''}`;
         console.log("User prompt:", userPrompt);
 
-        const messages = [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: userPrompt },
-            { role: "user", content: text }
-        ]
+        const userContent = `${userPrompt}\n\n${text}`;
 
-        const tags = await this.llm.completion(
-            this.plugin.settings.model,
+
+        const tags = await this.llm.tagGeneration(
+            this.plugin.settings.modelTagGeneration,
             this.plugin.settings.token,
-            messages,
+            systemPrompt,
+            userContent,
             this.plugin.settings.endpoint
         );
 

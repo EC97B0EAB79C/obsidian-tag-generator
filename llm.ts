@@ -1,16 +1,28 @@
 import OpenAI from "openai";
+import { GoogleGenAI, Type } from "@google/genai";
+
 
 export class LLMGeneration {
-    async completion(
+    // --- Tag Generation Methods ----------------------------------------------------------------
+    async tagGeneration(
         model: string,
-        apiKey: string,
-        messages: { role: string, content: string }[],
-        endpoint?: string
+        apiKey: {},
+        systemPrompt: string,
+        userContent: string,
+        endpoint: {}
     ): Promise<string[]> {
         const provider = model.split('/')[0];
         let response;
         if (provider === 'openai') {
-            response = await this.completionOpenAI(model, apiKey, messages, endpoint);
+            const messages = [
+                { role: "system", content: systemPrompt },
+                { role: "user", content: userContent }
+            ];
+            response = await this.tagGenerationOpenAI(model, apiKey["openai"], messages, endpoint["openai"]);
+        }
+        else if (provider === 'gemini') {
+            const modelName = model.split('/')[1];
+            response = await this.tagGenerationGemini(modelName, apiKey["gemini"], systemPrompt, userContent);
         }
         else {
             throw new Error(`Unsupported provider: ${provider}`);
@@ -23,8 +35,7 @@ export class LLMGeneration {
         return json.keywords || [];
     }
 
-
-    async completionOpenAI(
+    async tagGenerationOpenAI(
         model: string,
         apiKey: string,
         messages: { role: string, content: string }[],
@@ -52,6 +63,144 @@ export class LLMGeneration {
         } catch (error) {
             console.error("Error generating tag:", error);
             return;
+        }
+    }
+
+    async tagGenerationGemini(
+        model: string,
+        apiKey: string,
+        systemPrompt: string,
+        userContent: string,
+    ) {
+        try {
+            console.log("Generating completion with Gemini:", model);
+            const genAI = new GoogleGenAI({ apiKey: apiKey });
+            console.log("Client created:", genAI);
+
+            const response = await genAI.models.generateContent({
+                model: model,
+                contents: userContent,
+                config: {
+                    responseMimeType: "application/json",
+                    responseSchema: {
+                        type: Type.OBJECT,
+                        properties: {
+                            keywords: {
+                                type: Type.ARRAY,
+                                items: {
+                                    type: Type.STRING
+                                }
+                            }
+                        },
+                        required: ["keywords"]
+                    },
+                    systemInstruction: systemPrompt,
+                }
+            });
+            console.log("Response received:", response);
+
+            return response.text;
+        } catch (error) {
+            console.error("Error generating tag:", error);
+            return "[]";
+        }
+    }
+
+    async tagGenerationPPLX(
+        model: string,
+        apiKey: string,
+        messages: { role: string, content: string }[],
+    ) {
+        throw new Error("Perplexity model is not implemented yet.");
+    }
+
+
+    // --- Citation Methods ----------------------------------------------------------------
+    async citation(
+        model: string,
+        apiKey: {},
+        systemPrompt: string,
+        userContent: string,
+        endpoint?: {}
+    ) {
+        const provider = model.split('/')[0];
+        let response;
+        if (provider === 'pplx') {
+            const modelName = model.split('/')[1];
+            const messages = [
+                { role: "system", content: systemPrompt },
+                { role: "user", content: userContent }
+            ];
+            response = await this.citationPPLX(modelName, apiKey["pplx"], messages);
+        }
+        else if (provider === 'gemini') {
+            const modelName = model.split('/')[1];
+            response = await this.citationGemini(modelName, apiKey["gemini"], systemPrompt, userContent);
+        }
+        else {
+            throw new Error(`Unsupported provider: ${provider}`);
+        }
+
+        if (!response) {
+            throw new Error("No response from LLM");
+        }
+        return response;
+    }
+
+    async citationOpenAI(
+        model: string,
+        apiKey: string,
+        messages: { role: string, content: string }[],
+        endpoint?: string
+    ) {
+        throw new Error("OpenAI citation generation is not implemented yet.");
+    }
+
+    async citationGemini(
+        model: string,
+        apiKey: string,
+        systemPrompt: string,
+        userContent: string,
+    ) {
+        try {
+            console.log("Generating citation with Gemini:", model);
+            const genAI = new GoogleGenAI({ apiKey: apiKey });
+            console.log("Client created:", genAI);
+
+            const response = await genAI.models.generateContent({
+                model: model,
+                contents: userContent,
+                config: {
+                    responseMimeType: "application/json",
+                    responseSchema: {
+                        type: Type.OBJECT,
+                        properties: {
+                            sources: {
+                                type: Type.ARRAY,
+                                items: {
+                                    type: Type.OBJECT,
+                                    properties: {
+                                        title: { type: Type.STRING },
+                                        url: { type: Type.STRING }
+                                    },
+                                    required: ["title", "url"]
+                                }
+                            }
+                        },
+                        required: ["sources"]
+                    },
+                    systemInstruction: systemPrompt,
+                }
+            });
+            console.log("Response received:", response);
+            if (!response.text) {
+                throw new Error("No text in response");
+            }
+
+            return JSON.parse(response.text).sources || [];
+        } catch (error) {
+            console.error("Error generating citation:", error);
+            return [];
         }
     }
 
