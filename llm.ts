@@ -24,6 +24,14 @@ export class LLMGeneration {
             const modelName = model.split('/')[1];
             response = await this.tagGenerationGemini(modelName, apiKey["gemini"], systemPrompt, userContent);
         }
+        else if (provider === 'pplx') {
+            const modelName = model.split('/')[1];
+            const messages = [
+                { role: "system", content: systemPrompt },
+                { role: "user", content: userContent }
+            ];
+            response = await this.tagGenerationPPLX(modelName, apiKey["pplx"], messages);
+        }
         else {
             throw new Error(`Unsupported provider: ${provider}`);
         }
@@ -111,7 +119,50 @@ export class LLMGeneration {
         apiKey: string,
         messages: { role: string, content: string }[],
     ) {
-        throw new Error("Perplexity model is not implemented yet.");
+        const responseSchema = {
+            type: "object",
+            properties: {
+                keywords: {
+                    type: "array",
+                    items: {
+                        type: "string"
+                    }
+                }
+            },
+            required: ["keywords"]
+        };
+
+        const body = {
+            model: model,
+            messages: messages,
+            response_format: {
+                type: 'json_schema',
+                json_schema: {
+                    schema: responseSchema
+                }
+            }
+        };
+        const options = {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${apiKey}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(body),
+        };
+
+        try {
+            console.log("Generating tag with Perplexity:", model);
+            const response = await fetch('https://api.perplexity.ai/chat/completions', options);
+            console.log("Response received:", response);
+
+            const data = await response.json();
+            const content = data.choices[0].message.content;
+            return content;
+        } catch (err) {
+            console.error(err);
+            return;
+        }
     }
 
 
