@@ -3,7 +3,6 @@ name: Build plugin
 on:
   push:
     branches:
-      - main
       - pipeline
 
 jobs:
@@ -27,7 +26,13 @@ jobs:
       - name: Zip plugin files
         run: zip -r plugin.zip main.js package.json README.md
 
-      - name: Upload release artifact
-        uses: actions/upload-artifact@v2
-        with:
-          name: plugin-release
+      - name: create release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          tag=$(node -p "require('./package.json').version")
+
+          gh release create "$tag" \
+            --title="$tag" \
+            --draft \
+            main.js manifest.json styles.css
