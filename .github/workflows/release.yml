@@ -2,8 +2,8 @@ name: Build plugin
 
 on:
   push:
-    branches:
-      - pipeline
+    tags:
+      - "*"
 
 jobs:
   build:
@@ -27,7 +27,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          tag=$(node -p "require('./package.json').version")
+          tag="${GITHUB_REF#refs/tags/}"
+          echo "Creating release for tag: $tag"
 
           gh release create "$tag" \
             --title="$tag" \
