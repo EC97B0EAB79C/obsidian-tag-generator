@@ -1,20 +1,22 @@
 import OpenAI from "openai";
+import { ChatCompletionMessageParam } from 'openai/resources/chat/completions';
 import { GoogleGenAI, Type } from "@google/genai";
+import { ApiKeys, Endpoint } from "settings";
 
 
 export class LLMGeneration {
     // --- Tag Generation Methods ----------------------------------------------------------------
     async tagGeneration(
         model: string,
-        apiKey: {},
+        apiKey: ApiKeys,
         systemPrompt: string,
         userContent: string,
-        endpoint: {}
+        endpoint: Endpoint
     ): Promise<string[]> {
         const provider = model.split('/')[0];
         let response;
         if (provider === 'openai') {
-            const messages = [
+            const messages: ChatCompletionMessageParam[] = [
                 { role: "system", content: systemPrompt },
                 { role: "user", content: userContent }
             ];
@@ -46,7 +48,7 @@ export class LLMGeneration {
     async tagGenerationOpenAI(
         model: string,
         apiKey: string,
-        messages: { role: string, content: string }[],
+        messages: ChatCompletionMessageParam[],
         endpoint?: string
     ) {
         try {
@@ -169,15 +171,15 @@ export class LLMGeneration {
     // --- Citation Methods ----------------------------------------------------------------
     async citation(
         model: string,
-        apiKey: {},
+        apiKey: ApiKeys,
         systemPrompt: string,
         userContent: string,
-        endpoint?: {}
+        endpoint: Endpoint
     ) {
         const provider = model.split('/')[0];
         let response;
         if (provider === 'openai') {
-            const messages = [
+            const messages: ChatCompletionMessageParam[] = [
                 { role: "system", content: systemPrompt },
                 { role: "user", content: userContent }
             ];
@@ -208,7 +210,7 @@ export class LLMGeneration {
     async citationOpenAI(
         model: string,
         apiKey: string,
-        messages: { role: string, content: string }[],
+        messages: ChatCompletionMessageParam[],
         endpoint?: string
     ) {
         try {
@@ -230,6 +232,9 @@ export class LLMGeneration {
             console.log("Response received:", response);
 
             const data = response.choices[0].message.content;
+            if (!data) {
+                throw new Error("No content in response");
+            }
             console.log("Data received:", data);
             const sources = JSON.parse(data).sources || [];
             return sources || [];
