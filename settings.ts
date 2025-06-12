@@ -17,6 +17,16 @@ const modelOptions = [
     { name: 'Gemini 1.5 Pro', value: 'gemini/gemini-1.5-pro' },
 ];
 
+export interface ApiKeys {
+    openai: string;
+    pplx: string;
+    gemini: string;
+}
+
+export interface Endpoint {
+    openai: string;
+}
+
 export class TagGeneratorSettingTab extends PluginSettingTab {
     plugin: TagGeneratorPlugin;
 

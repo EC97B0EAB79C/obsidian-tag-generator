@@ -1,5 +1,5 @@
-import { Notice, Plugin, Editor, MarkdownView, getAllTags, MetadataCache } from 'obsidian';
-import { TagGeneratorSettingTab } from './settings';
+import { Notice, Plugin, Editor, MarkdownView, MarkdownFileInfo, getAllTags, MetadataCache } from 'obsidian';
+import { TagGeneratorSettingTab, ApiKeys, Endpoint } from './settings';
 import { TagGeneration } from './tag_generation';
 import { CiteGeneration } from './cite_generation';
 
@@ -15,8 +15,8 @@ interface TagGeneratorPluginSettings {
     modelCiteGeneration: string;
 
     // ---- API Settings -----------------------------------------------------
-    token: { openai: string, pplx: string, gemini: string };
-    endpoint: { openai: string };
+    token: ApiKeys;
+    endpoint: Endpoint;
 }
 
 const DEFAULT_SETTINGS: Partial<TagGeneratorPluginSettings> = {
@@ -36,25 +36,29 @@ const DEFAULT_SETTINGS: Partial<TagGeneratorPluginSettings> = {
 };
 
 export default class TagGeneratorPlugin extends Plugin {
-    settings: TagGeneratorPluginSettings;
-    tagGeneration: TagGeneration;
-    citeGeneration: CiteGeneration;
+    settings!: TagGeneratorPluginSettings;
 
     // ---- Main Plugin Methods --------------------------------------------------------------
     async onload() {
         await this.loadSettings();
         this.addSettingTab(new TagGeneratorSettingTab(this.app, this));
-        this.tagGeneration = new TagGeneration(this);
-        this.citeGeneration = new CiteGeneration(this);
+        const tagGeneration = new TagGeneration(this);
+        const citeGeneration = new CiteGeneration(this);
 
         // ---- Tag Generation Commands -----------------------------------------------------
         this.addCommand({
             id: 'generate-tag-note',
             name: 'Generate tag for entire note',
             hotkeys: [{ modifiers: ['Alt'], key: 'n' }],
-            editorCallback: async (editor: Editor, view: MarkdownView) => {
+            editorCallback: async (editor: Editor, ctx: MarkdownView | MarkdownFileInfo) => {
                 new Notice('Generating tag...');
-                const tags = await this.tagGeneration.generateTagFromText(
+                const view = ctx instanceof MarkdownView ? ctx : this.app.workspace.getActiveViewOfType(MarkdownView);
+                if (!view) {
+                    new Notice('No active markdown view');
+                    return;
+                }
+
+                const tags = await tagGeneration.generateTagFromText(
                     editor.getValue(),
                     view.getDisplayText()
                 );
@@ -72,7 +76,14 @@ export default class TagGeneratorPlugin extends Plugin {
             id: 'generate-tag-selected',
             name: 'Generate tag for selected text',
             hotkeys: [{ modifiers: ['Alt'], key: 's' }],
-            editorCallback: async (editor: Editor, view: MarkdownView) => {
+            editorCallback: async (editor: Editor, ctx: MarkdownView | MarkdownFileInfo) => {
+                new Notice('Generating tag...');
+                const view = ctx instanceof MarkdownView ? ctx : this.app.workspace.getActiveViewOfType(MarkdownView);
+                if (!view) {
+                    new Notice('No active markdown view');
+                    return;
+                }
+
                 const selectedText = editor.getSelection();
                 if (!selectedText) {
                     new Notice('No text selected');
@@ -80,7 +91,7 @@ export default class TagGeneratorPlugin extends Plugin {
                 }
 
                 new Notice('Generating tag...');
-                const tags = await this.tagGeneration.generateTagFromText(
+                const tags = await tagGeneration.generateTagFromText(
                     selectedText,
                     view.getDisplayText(),
                     (await this.getCurrentHeadingText(view)).heading
@@ -99,11 +110,18 @@ export default class TagGeneratorPlugin extends Plugin {
         this.addCommand({
             id: 'search-citations',
             name: 'Search citation for entire note',
-            editorCallback: async (editor: Editor, view: MarkdownView) => {
+            editorCallback: async (editor: Editor, ctx: MarkdownView | MarkdownFileInfo) => {
+                new Notice('Generating tag...');
+                const view = ctx instanceof MarkdownView ? ctx : this.app.workspace.getActiveViewOfType(MarkdownView);
+                if (!view) {
+                    new Notice('No active markdown view');
+                    return;
+                }
+
                 new Notice('Searching citations...');
                 let value = editor.getValue();
                 const cursor = editor.getCursor();
-                const result = await this.citeGeneration.generateCiteFromText(
+                const result = await citeGeneration.generateCiteFromText(
                     value,
                     view.getDisplayText()
                 );
@@ -124,7 +142,14 @@ export default class TagGeneratorPlugin extends Plugin {
         this.addCommand({
             id: 'search-citations-selected',
             name: 'Search citation for selected text',
-            editorCallback: async (editor: Editor, view: MarkdownView) => {
+            editorCallback: async (editor: Editor, ctx: MarkdownView | MarkdownFileInfo) => {
+                new Notice('Generating tag...');
+                const view = ctx instanceof MarkdownView ? ctx : this.app.workspace.getActiveViewOfType(MarkdownView);
+                if (!view) {
+                    new Notice('No active markdown view');
+                    return;
+                }
+
                 const selectedText = editor.getSelection();
                 if (!selectedText) {
                     new Notice('No text selected');
@@ -133,7 +158,7 @@ export default class TagGeneratorPlugin extends Plugin {
                 const heading = await this.getCurrentHeadingText(view);
 
                 new Notice('Searching citations...');
-                const result = await this.citeGeneration.generateCiteFromText(
+                const result = await citeGeneration.generateCiteFromText(
                     selectedText,
                     view.getDisplayText(),
                     heading.heading,
@@ -201,7 +226,7 @@ export default class TagGeneratorPlugin extends Plugin {
         editor.replaceSelection(replaceText);
     }
 
-    generateCitationList(citations: object[], level: number = 2): string {
+    generateCitationList(citations: { title: string, url: string }[], level: number = 2): string {
         let list = citations.map(citation => `- [${citation['title']}](${citation['url']})`).join('\n')
         list = `\n\n${"#".repeat(level)} Citations\n` + list + "\n";
         return list
@@ -209,11 +234,17 @@ export default class TagGeneratorPlugin extends Plugin {
 
     async getCurrentHeadingText(view: MarkdownView): Promise<{ heading: string, level: number }> {
         const cursorLine = view.editor.getCursor("from").line - 1;
-        const cache = this.app.metadataCache.getFileCache(this.app.workspace.getActiveFile());
+        const activeFile = this.app.workspace.getActiveFile();
+        if (!activeFile) {
+            new Notice('No active file');
+            return { heading: '', level: 0 };
+        }
+        const cache = this.app.metadataCache.getFileCache(activeFile);
 
         let currentHeading = '';
         let headingLevel = 0;
-        for (const h of cache.headings) {
+        const headings = cache?.headings || [];
+        for (const h of headings) {
             if (h.position.start.line <= cursorLine) {
                 currentHeading = h.heading;
                 headingLevel = h.level;
