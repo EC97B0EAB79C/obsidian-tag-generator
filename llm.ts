@@ -37,6 +37,39 @@ export async function generationOpenAI(
     }
 }
 
+export async function generationGemini(
+    model: string,
+    apiKey: string,
+    systemPrompt: string,
+    userContent: string,
+    responseMimeType?: string,
+    responseSchema?: any
+) {
+    try {
+        console.log("Generating with Gemini:", model);
+        const genAI = new GoogleGenAI({ apiKey: apiKey });
+        console.log("> Client created:", genAI);
+
+        const response = await genAI.models.generateContent({
+            model: model,
+            contents: userContent,
+            config: {
+                responseMimeType: responseMimeType,
+                responseSchema: responseSchema,
+                systemInstruction: systemPrompt,
+            }
+        });
+        console.log("> Response received:", response);
+
+        return response;
+    } catch (error) {
+        console.error("> Error generating:", error);
+        return;
+    }
+}
+
+
+
 export class LLMGeneration {
     // --- Tag Generation Methods ----------------------------------------------------------------
     async tagGeneration(
@@ -111,38 +144,34 @@ export class LLMGeneration {
         systemPrompt: string,
         userContent: string,
     ) {
-        try {
-            console.log("Generating completion with Gemini:", model);
-            const genAI = new GoogleGenAI({ apiKey: apiKey });
-            console.log("Client created:", genAI);
-
-            const response = await genAI.models.generateContent({
-                model: model,
-                contents: userContent,
-                config: {
-                    responseMimeType: "application/json",
-                    responseSchema: {
-                        type: Type.OBJECT,
-                        properties: {
-                            keywords: {
-                                type: Type.ARRAY,
-                                items: {
-                                    type: Type.STRING
-                                }
-                            }
-                        },
-                        required: ["keywords"]
-                    },
-                    systemInstruction: systemPrompt,
+        const responseMimeType = "application/json";
+        const responseSchema = {
+            type: Type.OBJECT,
+            properties: {
+                keywords: {
+                    type: Type.ARRAY,
+                    items: {
+                        type: Type.STRING
+                    }
                 }
-            });
-            console.log("Response received:", response);
+            },
+            required: ["keywords"]
+        };
+        const response = await generationGemini(
+            model,
+            apiKey,
+            systemPrompt,
+            userContent,
+            responseMimeType,
+            responseSchema
+        );
 
-            return response.text;
-        } catch (error) {
-            console.error("Error generating tag:", error);
+        if (!response || !response.text) {
+            console.error("No text in response");
             return "[]";
         }
+
+        return response.text;
     }
 
     async tagGenerationPPLX(
@@ -270,46 +299,39 @@ export class LLMGeneration {
         systemPrompt: string,
         userContent: string,
     ) {
-        try {
-            console.log("Generating citation with Gemini:", model);
-            const genAI = new GoogleGenAI({ apiKey: apiKey });
-            console.log("Client created:", genAI);
-
-            const response = await genAI.models.generateContent({
-                model: model,
-                contents: userContent,
-                config: {
-                    responseMimeType: "application/json",
-                    responseSchema: {
+        const responseMimeType = "application/json";
+        const responseSchema = {
+            type: Type.OBJECT,
+            properties: {
+                sources: {
+                    type: Type.ARRAY,
+                    items: {
                         type: Type.OBJECT,
                         properties: {
-                            sources: {
-                                type: Type.ARRAY,
-                                items: {
-                                    type: Type.OBJECT,
-                                    properties: {
-                                        title: { type: Type.STRING },
-                                        url: { type: Type.STRING }
-                                    },
-                                    required: ["title", "url"]
-                                }
-                            }
+                            title: { type: Type.STRING },
+                            url: { type: Type.STRING }
                         },
-                        required: ["sources"]
-                    },
-                    systemInstruction: systemPrompt,
+                        required: ["title", "url"]
+                    }
                 }
-            });
-            console.log("Response received:", response);
-            if (!response.text) {
-                throw new Error("No text in response");
-            }
+            },
+            required: ["sources"]
+        };
+        const response = await generationGemini(
+            model,
+            apiKey,
+            systemPrompt,
+            userContent,
+            responseMimeType,
+            responseSchema
+        );
 
-            return JSON.parse(response.text).sources || [];
-        } catch (error) {
-            console.error("Error generating citation:", error);
+        if (!response || !response.text) {
+            console.error("No text in response");
             return [];
         }
+
+        return JSON.parse(response.text).sources || [];
     }
 
     async citationPPLX(
