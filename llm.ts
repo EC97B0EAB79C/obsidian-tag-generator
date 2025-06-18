@@ -2,7 +2,40 @@ import OpenAI from "openai";
 import { ChatCompletionMessageParam } from 'openai/resources/chat/completions';
 import { GoogleGenAI, Type } from "@google/genai";
 import { ApiKeys, Endpoint } from "settings";
+import { ResponseFormatJSONObject, ResponseFormatJSONSchema, ResponseFormatText } from "openai/resources/index";
 
+
+export async function generationOpenAI(
+    model: string,
+    apiKey: string,
+    messages: ChatCompletionMessageParam[],
+    endpoint?: string,
+    responseFormat?: ResponseFormatText | ResponseFormatJSONSchema | ResponseFormatJSONObject | undefined
+) {
+    try {
+        console.log("Generating with OpenAI:", model, endpoint);
+        const client = new OpenAI({
+            baseURL: endpoint,
+            apiKey: apiKey,
+            dangerouslyAllowBrowser: true
+        });
+        console.log("> Client created:", client);
+
+        const response = client.chat.completions.create({
+            messages: messages,
+            temperature: 1.0,
+            top_p: 1.0,
+            model: model,
+            response_format: responseFormat,
+        });
+        console.log("> Response received:", response);
+
+        return response;
+    } catch (error) {
+        console.error("> Error generating:", error);
+        return;
+    }
+}
 
 export class LLMGeneration {
     // --- Tag Generation Methods ----------------------------------------------------------------
@@ -51,29 +84,25 @@ export class LLMGeneration {
         messages: ChatCompletionMessageParam[],
         endpoint?: string
     ) {
-        try {
-            console.log("Generating completion with OpenAI:", model, endpoint);
-            const client = new OpenAI({
-                baseURL: endpoint,
-                apiKey: apiKey,
-                dangerouslyAllowBrowser: true
-            });
-            console.log("Client created:", client);
+        const responseFormat: ResponseFormatJSONObject = { type: "json_object" };
+        const response = await generationOpenAI(
+            model,
+            apiKey,
+            messages,
+            endpoint,
+            responseFormat
+        );
 
-            const response = await client.chat.completions.create({
-                messages: messages,
-                temperature: 1.0,
-                top_p: 1.0,
-                model: model,
-                response_format: { type: "json_object" },
-            });
-            console.log("Response received:", response);
-
-            return response.choices[0].message.content;
-        } catch (error) {
-            console.error("Error generating tag:", error);
+        if (!response || !response.choices || response.choices.length === 0) {
+            console.error("No choices in response");
             return;
         }
+        if (!response.choices[0].message || !response.choices[0].message.content) {
+            console.error("No content in response message");
+            return;
+        }
+
+        return response.choices[0].message.content;
     }
 
     async tagGenerationGemini(
@@ -176,6 +205,7 @@ export class LLMGeneration {
         userContent: string,
         endpoint: Endpoint
     ) {
+        // TODO: Get JSON string and parse it in this function
         const provider = model.split('/')[0];
         let response;
         if (provider === 'openai') {
@@ -213,36 +243,25 @@ export class LLMGeneration {
         messages: ChatCompletionMessageParam[],
         endpoint?: string
     ) {
-        try {
-            console.log("Generating citation with OpenAI:", model, endpoint);
-            const client = new OpenAI({
-                baseURL: endpoint,
-                apiKey: apiKey,
-                dangerouslyAllowBrowser: true
-            });
-            console.log("Client created:", client);
+        const responseFormat: ResponseFormatJSONObject = { type: "json_object" };
+        const response = await generationOpenAI(
+            model,
+            apiKey,
+            messages,
+            endpoint,
+            responseFormat
+        );
 
-            const response = await client.chat.completions.create({
-                messages: messages,
-                temperature: 1.0,
-                top_p: 1.0,
-                model: model,
-                response_format: { type: "json_object" },
-            });
-            console.log("Response received:", response);
-
-            const data = response.choices[0].message.content;
-            if (!data) {
-                throw new Error("No content in response");
-            }
-            console.log("Data received:", data);
-            const sources = JSON.parse(data).sources || [];
-            return sources || [];
-        }
-        catch (error) {
-            console.error("Error generating citation:", error);
+        if (!response || !response.choices || response.choices.length === 0) {
+            console.error("No choices in response");
             return [];
         }
+        if (!response.choices[0].message || !response.choices[0].message.content) {
+            console.error("No content in response message");
+            return [];
+        }
+
+        return JSON.parse(response.choices[0].message.content).sources || [];
     }
 
     async citationGemini(
