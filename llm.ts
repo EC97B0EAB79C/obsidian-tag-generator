@@ -68,6 +68,43 @@ export async function generationGemini(
     }
 }
 
+export async function generationPPLX(
+    model: string,
+    apiKey: string,
+    messages: { role: string, content: string }[],
+    responseFormat?: any
+) {
+    try {
+        console.log("Generating with Perplexity:", model);
+        const body = {
+            model: model,
+            messages: messages,
+            response_format: responseFormat
+        };
+        const options = {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${apiKey}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(body),
+        };
+
+        const response = await fetch('https://api.perplexity.ai/chat/completions', options);
+        console.log("> Response received:", response);
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        return data;
+    } catch (error) {
+        console.error("> Error generating:", error);
+        return;
+    }
+}
+
 
 
 export class LLMGeneration {
@@ -191,39 +228,27 @@ export class LLMGeneration {
             },
             required: ["keywords"]
         };
-
-        const body = {
-            model: model,
-            messages: messages,
-            response_format: {
-                type: 'json_schema',
-                json_schema: {
-                    schema: responseSchema
-                }
+        const responseFormat = {
+            type: 'json_schema',
+            json_schema: {
+                schema: responseSchema
             }
         };
-        const options = {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${apiKey}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(body),
-        };
+        const response = await generationPPLX(
+            model,
+            apiKey,
+            messages,
+            responseFormat
+        );
 
-        try {
-            console.log("Generating tag with Perplexity:", model);
-            const response = await fetch('https://api.perplexity.ai/chat/completions', options);
-            console.log("Response received:", response);
-
-            const data = await response.json();
-            const content = data.choices[0].message.content;
-            return content;
-        } catch (err) {
-            console.error(err);
+        if (!response || !response.choices || response.choices.length === 0) {
+            console.error("No choices in response");
             return;
         }
+
+        return response.choices[0].message.content;
     }
+
 
 
     // --- Citation Methods ----------------------------------------------------------------
@@ -356,38 +381,24 @@ export class LLMGeneration {
             },
             required: ["sources"]
         };
-
-        const body = {
-            model: model,
-            messages: messages,
-            response_format: {
-                type: 'json_schema',
-                json_schema: {
-                    schema: responseSchema
-                }
+        const responseFormat = {
+            type: 'json_schema',
+            json_schema: {
+                schema: responseSchema
             }
         };
-        const options = {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${apiKey}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(body),
-        };
+        const response = await generationPPLX(
+            model,
+            apiKey,
+            messages,
+            responseFormat
+        );
 
-        try {
-            console.log("Generating citation with Perplexity:", model);
-            const response = await fetch('https://api.perplexity.ai/chat/completions', options);
-            console.log("Response received:", response);
-
-            const data = await response.json();
-            const sources = JSON.parse(data.choices[0].message.content).sources || [];
-            console.log("Data received:", sources);
-            return sources || [];
-        } catch (err) {
-            console.error(err);
+        if (!response || !response.choices || response.choices.length === 0) {
+            console.error("No choices in response");
             return [];
         }
+
+        return JSON.parse(response.choices[0].message.content).sources || [];
     }
 }
