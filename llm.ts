@@ -1,9 +1,7 @@
 import OpenAI from "openai";
 import { ChatCompletionMessageParam } from 'openai/resources/chat/completions';
-import { GoogleGenAI, Type } from "@google/genai";
-import { ApiKeys, Endpoint } from "settings";
+import { GoogleGenAI } from "@google/genai";
 import { ResponseFormatJSONObject, ResponseFormatJSONSchema, ResponseFormatText } from "openai/resources/index";
-
 
 export async function generationOpenAI(
     model: string,
@@ -21,7 +19,7 @@ export async function generationOpenAI(
         });
         console.log("> Client created:", client);
 
-        const response = client.chat.completions.create({
+        const response = await client.chat.completions.create({
             messages: messages,
             temperature: 1.0,
             top_p: 1.0,
@@ -30,7 +28,16 @@ export async function generationOpenAI(
         });
         console.log("> Response received:", response);
 
-        return response;
+        if (!response || !response.choices || response.choices.length === 0) {
+            console.error("No choices in response");
+            return;
+        }
+        if (!response.choices[0].message || !response.choices[0].message.content) {
+            console.error("No content in response message");
+            return;
+        }
+
+        return response.choices[0].message.content;
     } catch (error) {
         console.error("> Error generating:", error);
         return;
@@ -61,7 +68,12 @@ export async function generationGemini(
         });
         console.log("> Response received:", response);
 
-        return response;
+        if (!response || !response.text) {
+            console.error("No text in response");
+            return;
+        }
+
+        return response.text;
     } catch (error) {
         console.error("> Error generating:", error);
         return;
@@ -98,307 +110,14 @@ export async function generationPPLX(
         }
 
         const data = await response.json();
-        return data;
+        if (!data || !data.choices || data.choices.length === 0) {
+            console.error("No choices in response");
+            return;
+        }
+
+        return data.choices[0].message.content;
     } catch (error) {
         console.error("> Error generating:", error);
         return;
-    }
-}
-
-
-
-export class LLMGeneration {
-    // --- Tag Generation Methods ----------------------------------------------------------------
-    async tagGeneration(
-        model: string,
-        apiKey: ApiKeys,
-        systemPrompt: string,
-        userContent: string,
-        endpoint: Endpoint
-    ): Promise<string[]> {
-        const provider = model.split('/')[0];
-        let response;
-        if (provider === 'openai') {
-            const messages: ChatCompletionMessageParam[] = [
-                { role: "system", content: systemPrompt },
-                { role: "user", content: userContent }
-            ];
-            response = await this.tagGenerationOpenAI(model, apiKey["openai"], messages, endpoint["openai"]);
-        }
-        else if (provider === 'gemini') {
-            const modelName = model.split('/')[1];
-            response = await this.tagGenerationGemini(modelName, apiKey["gemini"], systemPrompt, userContent);
-        }
-        else if (provider === 'pplx') {
-            const modelName = model.split('/')[1];
-            const messages = [
-                { role: "system", content: systemPrompt },
-                { role: "user", content: userContent }
-            ];
-            response = await this.tagGenerationPPLX(modelName, apiKey["pplx"], messages);
-        }
-        else {
-            throw new Error(`Unsupported provider: ${provider}`);
-        }
-
-        if (!response) {
-            throw new Error("No response from LLM");
-        }
-        const json = JSON.parse(response);
-        return json.keywords || [];
-    }
-
-    async tagGenerationOpenAI(
-        model: string,
-        apiKey: string,
-        messages: ChatCompletionMessageParam[],
-        endpoint?: string
-    ) {
-        const responseFormat: ResponseFormatJSONObject = { type: "json_object" };
-        const response = await generationOpenAI(
-            model,
-            apiKey,
-            messages,
-            endpoint,
-            responseFormat
-        );
-
-        if (!response || !response.choices || response.choices.length === 0) {
-            console.error("No choices in response");
-            return;
-        }
-        if (!response.choices[0].message || !response.choices[0].message.content) {
-            console.error("No content in response message");
-            return;
-        }
-
-        return response.choices[0].message.content;
-    }
-
-    async tagGenerationGemini(
-        model: string,
-        apiKey: string,
-        systemPrompt: string,
-        userContent: string,
-    ) {
-        const responseMimeType = "application/json";
-        const responseSchema = {
-            type: Type.OBJECT,
-            properties: {
-                keywords: {
-                    type: Type.ARRAY,
-                    items: {
-                        type: Type.STRING
-                    }
-                }
-            },
-            required: ["keywords"]
-        };
-        const response = await generationGemini(
-            model,
-            apiKey,
-            systemPrompt,
-            userContent,
-            responseMimeType,
-            responseSchema
-        );
-
-        if (!response || !response.text) {
-            console.error("No text in response");
-            return "[]";
-        }
-
-        return response.text;
-    }
-
-    async tagGenerationPPLX(
-        model: string,
-        apiKey: string,
-        messages: { role: string, content: string }[],
-    ) {
-        const responseSchema = {
-            type: "object",
-            properties: {
-                keywords: {
-                    type: "array",
-                    items: {
-                        type: "string"
-                    }
-                }
-            },
-            required: ["keywords"]
-        };
-        const responseFormat = {
-            type: 'json_schema',
-            json_schema: {
-                schema: responseSchema
-            }
-        };
-        const response = await generationPPLX(
-            model,
-            apiKey,
-            messages,
-            responseFormat
-        );
-
-        if (!response || !response.choices || response.choices.length === 0) {
-            console.error("No choices in response");
-            return;
-        }
-
-        return response.choices[0].message.content;
-    }
-
-
-
-    // --- Citation Methods ----------------------------------------------------------------
-    async citation(
-        model: string,
-        apiKey: ApiKeys,
-        systemPrompt: string,
-        userContent: string,
-        endpoint: Endpoint
-    ) {
-        // TODO: Get JSON string and parse it in this function
-        const provider = model.split('/')[0];
-        let response;
-        if (provider === 'openai') {
-            const messages: ChatCompletionMessageParam[] = [
-                { role: "system", content: systemPrompt },
-                { role: "user", content: userContent }
-            ];
-            response = await this.citationOpenAI(model, apiKey["openai"], messages, endpoint["openai"] || undefined);
-        }
-        else if (provider === 'pplx') {
-            const modelName = model.split('/')[1];
-            const messages = [
-                { role: "system", content: systemPrompt },
-                { role: "user", content: userContent }
-            ];
-            response = await this.citationPPLX(modelName, apiKey["pplx"], messages);
-        }
-        else if (provider === 'gemini') {
-            const modelName = model.split('/')[1];
-            response = await this.citationGemini(modelName, apiKey["gemini"], systemPrompt, userContent);
-        }
-        else {
-            throw new Error(`Unsupported provider: ${provider}`);
-        }
-
-        if (!response) {
-            throw new Error("No response from LLM");
-        }
-        return response;
-    }
-
-    async citationOpenAI(
-        model: string,
-        apiKey: string,
-        messages: ChatCompletionMessageParam[],
-        endpoint?: string
-    ) {
-        const responseFormat: ResponseFormatJSONObject = { type: "json_object" };
-        const response = await generationOpenAI(
-            model,
-            apiKey,
-            messages,
-            endpoint,
-            responseFormat
-        );
-
-        if (!response || !response.choices || response.choices.length === 0) {
-            console.error("No choices in response");
-            return [];
-        }
-        if (!response.choices[0].message || !response.choices[0].message.content) {
-            console.error("No content in response message");
-            return [];
-        }
-
-        return JSON.parse(response.choices[0].message.content).sources || [];
-    }
-
-    async citationGemini(
-        model: string,
-        apiKey: string,
-        systemPrompt: string,
-        userContent: string,
-    ) {
-        const responseMimeType = "application/json";
-        const responseSchema = {
-            type: Type.OBJECT,
-            properties: {
-                sources: {
-                    type: Type.ARRAY,
-                    items: {
-                        type: Type.OBJECT,
-                        properties: {
-                            title: { type: Type.STRING },
-                            url: { type: Type.STRING }
-                        },
-                        required: ["title", "url"]
-                    }
-                }
-            },
-            required: ["sources"]
-        };
-        const response = await generationGemini(
-            model,
-            apiKey,
-            systemPrompt,
-            userContent,
-            responseMimeType,
-            responseSchema
-        );
-
-        if (!response || !response.text) {
-            console.error("No text in response");
-            return [];
-        }
-
-        return JSON.parse(response.text).sources || [];
-    }
-
-    async citationPPLX(
-        model: string,
-        apiKey: string,
-        messages: { role: string, content: string }[],
-    ) {
-        const responseSchema = {
-            type: "object",
-            properties: {
-                sources: {
-                    type: "array",
-                    items: {
-                        type: "object",
-                        properties: {
-                            title: { type: "string" },
-                            url: { type: "string" }
-                        },
-                        required: ["title", "url"]
-                    }
-                }
-            },
-            required: ["sources"]
-        };
-        const responseFormat = {
-            type: 'json_schema',
-            json_schema: {
-                schema: responseSchema
-            }
-        };
-        const response = await generationPPLX(
-            model,
-            apiKey,
-            messages,
-            responseFormat
-        );
-
-        if (!response || !response.choices || response.choices.length === 0) {
-            console.error("No choices in response");
-            return [];
-        }
-
-        return JSON.parse(response.choices[0].message.content).sources || [];
     }
 }

@@ -1,5 +1,9 @@
 import TagGeneratorPlugin from './main';
-import { LLMGeneration } from './llm';
+import { generationGemini, generationOpenAI, generationPPLX } from './llm';
+import { ApiKeys, Endpoint } from 'settings';
+import { ChatCompletionMessageParam } from 'openai/resources/chat/completions';
+import { ResponseFormatJSONObject } from 'openai/resources/index';
+import { Type } from '@google/genai';
 
 const prompt = `Please act as a research assistant. I will provide you with the title and content of a note I have written. Your task is to identify and list relevant sources and citations that support, elaborate on, or are closely related to the topics discussed in my note.
 
@@ -15,13 +19,12 @@ Please output:
 * return the list of sources with key: sources
 `;
 
+
 export class CiteGeneration {
     plugin: TagGeneratorPlugin;
-    llm: LLMGeneration;
 
     constructor(plugin: TagGeneratorPlugin) {
         this.plugin = plugin;
-        this.llm = new LLMGeneration();
     }
 
     async generateCiteFromText(text: string, displayText: string, headingText?: string): Promise<{ title: string, url: string }[]> {
@@ -33,7 +36,7 @@ export class CiteGeneration {
 
         const userContent = `${userPrompt}\n\n${text}`;
 
-        const cites = await this.llm.citation(
+        const cites = await this.citation(
             this.plugin.settings.modelCiteGeneration,
             this.plugin.settings.token,
             systemPrompt,
@@ -42,5 +45,137 @@ export class CiteGeneration {
         );
 
         return cites;
+    }
+
+    async citation(
+        model: string,
+        apiKey: ApiKeys,
+        systemPrompt: string,
+        userContent: string,
+        endpoint: Endpoint
+    ) {
+        const provider = model.split('/')[0];
+        let response;
+        if (provider === 'openai') {
+            const messages: ChatCompletionMessageParam[] = [
+                { role: "system", content: systemPrompt },
+                { role: "user", content: userContent }
+            ];
+            response = await this.citationOpenAI(model, apiKey["openai"], messages, endpoint["openai"] || undefined);
+        }
+        else if (provider === 'pplx') {
+            const modelName = model.split('/')[1];
+            const messages = [
+                { role: "system", content: systemPrompt },
+                { role: "user", content: userContent }
+            ];
+            response = await this.citationPPLX(modelName, apiKey["pplx"], messages);
+        }
+        else if (provider === 'gemini') {
+            const modelName = model.split('/')[1];
+            response = await this.citationGemini(modelName, apiKey["gemini"], systemPrompt, userContent);
+        }
+        else {
+            throw new Error(`Unsupported provider: ${provider}`);
+        }
+
+        if (!response) {
+            throw new Error("No response from LLM");
+        }
+        const json = JSON.parse(response);
+        return json.sources || [];
+    }
+
+    // ------- LLM Helper Functions ---------------------------------------------------
+    async citationOpenAI(
+        model: string,
+        apiKey: string,
+        messages: ChatCompletionMessageParam[],
+        endpoint?: string
+    ) {
+        const responseFormat: ResponseFormatJSONObject = { type: "json_object" };
+        const content = await generationOpenAI(
+            model,
+            apiKey,
+            messages,
+            endpoint,
+            responseFormat
+        );
+
+        return content;
+    }
+
+    async citationGemini(
+        model: string,
+        apiKey: string,
+        systemPrompt: string,
+        userContent: string,
+    ) {
+        const responseMimeType = "application/json";
+        const responseSchema = {
+            type: Type.OBJECT,
+            properties: {
+                sources: {
+                    type: Type.ARRAY,
+                    items: {
+                        type: Type.OBJECT,
+                        properties: {
+                            title: { type: Type.STRING },
+                            url: { type: Type.STRING }
+                        },
+                        required: ["title", "url"]
+                    }
+                }
+            },
+            required: ["sources"]
+        };
+        const content = await generationGemini(
+            model,
+            apiKey,
+            systemPrompt,
+            userContent,
+            responseMimeType,
+            responseSchema
+        );
+
+        return content;
+    }
+
+    async citationPPLX(
+        model: string,
+        apiKey: string,
+        messages: { role: string, content: string }[],
+    ) {
+        const responseSchema = {
+            type: "object",
+            properties: {
+                sources: {
+                    type: "array",
+                    items: {
+                        type: "object",
+                        properties: {
+                            title: { type: "string" },
+                            url: { type: "string" }
+                        },
+                        required: ["title", "url"]
+                    }
+                }
+            },
+            required: ["sources"]
+        };
+        const responseFormat = {
+            type: 'json_schema',
+            json_schema: {
+                schema: responseSchema
+            }
+        };
+        const content = await generationPPLX(
+            model,
+            apiKey,
+            messages,
+            responseFormat
+        );
+
+        return content
     }
 }
