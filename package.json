@@ -1,6 +1,6 @@
 {
 	"name": "obsidian-tag-generator",
-	"version": "0.2.2",
+	"version": "0.2.3",
 	"description": "This is a plugin for generating tags on Obsidian",
 	"main": "main.js",
 	"scripts": {

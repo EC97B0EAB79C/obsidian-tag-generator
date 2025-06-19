@@ -111,14 +111,13 @@ export default class TagGeneratorPlugin extends Plugin {
             id: 'search-citations',
             name: 'Search citation for entire note',
             editorCallback: async (editor: Editor, ctx: MarkdownView | MarkdownFileInfo) => {
-                new Notice('Generating tag...');
+                new Notice('Searching citations...');
                 const view = ctx instanceof MarkdownView ? ctx : this.app.workspace.getActiveViewOfType(MarkdownView);
                 if (!view) {
                     new Notice('No active markdown view');
                     return;
                 }
 
-                new Notice('Searching citations...');
                 let value = editor.getValue();
                 const cursor = editor.getCursor();
                 const result = await citeGeneration.generateCiteFromText(
@@ -143,7 +142,7 @@ export default class TagGeneratorPlugin extends Plugin {
             id: 'search-citations-selected',
             name: 'Search citation for selected text',
             editorCallback: async (editor: Editor, ctx: MarkdownView | MarkdownFileInfo) => {
-                new Notice('Generating tag...');
+                new Notice('Searching citations...');
                 const view = ctx instanceof MarkdownView ? ctx : this.app.workspace.getActiveViewOfType(MarkdownView);
                 if (!view) {
                     new Notice('No active markdown view');
@@ -157,7 +156,6 @@ export default class TagGeneratorPlugin extends Plugin {
                 }
                 const heading = await this.getCurrentHeadingText(view);
 
-                new Notice('Searching citations...');
                 const result = await citeGeneration.generateCiteFromText(
                     selectedText,
                     view.getDisplayText(),
