@@ -1,21 +1,23 @@
-name: Build plugin
+name: Build and Draft Release
 
 on:
-  push:
-    tags:
-      - "*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'The version number for the release (e.g., 1.2.0)'
+        required: true
 
 jobs:
-  build:
+  build_and_draft:
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Set up Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: '18.x'
 
@@ -25,14 +27,28 @@ jobs:
       - name: Build plugin
         run: npm run build
 
-      - name: create release
+      - name: Create and Push Tag
+        run: |
+          # Configure git user
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # Create and push the tag
+          # The 'v' prefix is a common convention, adjust if not needed
+          TAG="v${{ github.event.inputs.version }}"
+          echo "Creating and pushing tag: $TAG"
+          git tag "$TAG" -m "Release $TAG"
+          git push origin "$TAG"
+
+      - name: Create Draft Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          tag="${GITHUB_REF#refs/tags/}"
-          echo "Creating release for tag: $tag"
+          TAG="v${{ github.event.inputs.version }}"
+          echo "Creating draft release for tag: $TAG"
 
-          gh release create "$tag" \
-            --title="$tag" \
+          gh release create "$TAG" \
+            --title "$TAG" \
             --draft \
+            --notes "Draft release for version $TAG." \
             main.js manifest.json
