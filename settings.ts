@@ -3,18 +3,23 @@ import { App, PluginSettingTab, Setting } from 'obsidian';
 
 
 const modelOptions = [
+    { name: 'Gemini 2.5 Flash', value: 'gemini/gemini-2.5-flash' },
+    { name: 'Gemini 2.5 Flash-Lite Preview', value: 'gemini/gemini-2.5-flash-lite-preview-06-17' },
+    { name: 'Gemini 2.0 Flash', value: 'gemini/gemini-2.0-flash' },
+    { name: 'Gemini 2.0 Flash-Lite', value: 'gemini/gemini-2.0-flash-lite' },
+    { name: 'Gemini 1.5 Flash', value: 'gemini/gemini-1.5-flash' },
+    { name: 'Gemini 1.5 Pro', value: 'gemini/gemini-1.5-pro' },
     { name: 'OpenAI GPT-4.1-nano', value: 'openai/gpt-4.1-nano' },
     { name: 'OpenAI GPT-4.1-mini', value: 'openai/gpt-4.1-mini' },
     { name: 'OpenAI GPT-4.1', value: 'openai/gpt-4.1' },
     { name: 'OpenAI GPT-4o', value: 'openai/gpt-4o' },
     { name: 'OpenAI GPT-4o mini', value: 'openai/gpt-4o-mini' },
+    { name: 'OpenAi o4-mini', value: 'openai/o4-mini' },
+    { name: 'OpenAi o3-mini', value: 'openai/o3-mini' },
+    { name: 'OpenAi o3', value: 'openai/o3' },
+    { name: 'OpenAI o1', value: 'openai/o1' },
     { name: 'Sonar Pro', value: 'pplx/sonar-pro' },
     { name: 'Sonar', value: 'pplx/sonar' },
-    { name: 'Gemini 2.5 Flash Preview', value: 'gemini/gemini-2.5-flash-preview-05-20' },
-    { name: 'Gemini 2.0 Flash', value: 'gemini/gemini-2.0-flash' },
-    { name: 'Gemini 2.0 Flash-Lite', value: 'gemini/gemini-2.0-flash-lite' },
-    { name: 'Gemini 1.5 Flash', value: 'gemini/gemini-1.5-flash' },
-    { name: 'Gemini 1.5 Pro', value: 'gemini/gemini-1.5-pro' },
 ];
 
 export interface ApiKeys {
