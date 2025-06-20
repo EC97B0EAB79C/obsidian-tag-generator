@@ -46,9 +46,10 @@ jobs:
         run: |
           TAG="v${{ github.event.inputs.version }}"
           echo "Creating draft release for tag: $TAG"
+          zip obsidian-tag-generator-"$TAG".zip main.js manifest.json
 
           gh release create "$TAG" \
             --title "$TAG" \
             --draft \
             --notes "Draft release for version $TAG." \
-            main.js manifest.json
+            obsidian-tag-generator-"$TAG".zip
