@@ -50,17 +50,18 @@ export default class TagGeneratorPlugin extends Plugin {
             id: 'generate-tag-note',
             name: 'Generate tag for entire note',
             hotkeys: [{ modifiers: ['Alt'], key: 'n' }],
-            editorCallback: async (editor: Editor, ctx: MarkdownView | MarkdownFileInfo) => {
+            callback: async () => {
                 new Notice('Generating tag...');
-                const view = ctx instanceof MarkdownView ? ctx : this.app.workspace.getActiveViewOfType(MarkdownView);
-                if (!view) {
-                    new Notice('No active markdown view');
+                const file = this.app.workspace.getActiveFile();
+                if (!file) {
+                    new Notice('No active file');
                     return;
                 }
 
+                const content = await this.app.vault.read(file);
                 const tags = await tagGeneration.generateTagFromText(
-                    editor.getValue(),
-                    view.getDisplayText()
+                    content,
+                    file.basename
                 );
                 if (!tags || tags.length === 0) {
                     new Notice('Problem with the tag generation');
@@ -110,19 +111,18 @@ export default class TagGeneratorPlugin extends Plugin {
         this.addCommand({
             id: 'search-citations',
             name: 'Search citation for entire note',
-            editorCallback: async (editor: Editor, ctx: MarkdownView | MarkdownFileInfo) => {
+            callback: async () => {
                 new Notice('Searching citations...');
-                const view = ctx instanceof MarkdownView ? ctx : this.app.workspace.getActiveViewOfType(MarkdownView);
-                if (!view) {
-                    new Notice('No active markdown view');
+                const file = this.app.workspace.getActiveFile();
+                if (!file) {
+                    new Notice('No active file');
                     return;
                 }
 
-                let value = editor.getValue();
-                const cursor = editor.getCursor();
+                let content = await this.app.vault.read(file);
                 const result = await citeGeneration.generateCiteFromText(
-                    value,
-                    view.getDisplayText()
+                    content,
+                    file.basename
                 );
 
                 if (result.length == 0) {
@@ -131,9 +131,8 @@ export default class TagGeneratorPlugin extends Plugin {
                 }
 
                 const citation_list = this.generateCitationList(result);
-                value += citation_list;
-                editor.setValue(value);
-                editor.setCursor(cursor);
+                content += citation_list;
+                await this.app.vault.modify(file, content);
                 new Notice("Citation Added")
             }
         });
