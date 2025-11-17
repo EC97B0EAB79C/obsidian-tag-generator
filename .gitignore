@@ -137,3 +137,7 @@ dist
 
 # data
 data.json
+
+# compiled output
+main.js
+package-lock.json
